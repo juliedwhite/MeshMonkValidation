@@ -1,0 +1,160 @@
+---
+title: "Error measures on linear distances"
+output: html_notebook
+---
+
+
+#Error measures on linear distances
+```{r}
+DistancesToCalculate <- read.table("C:\\Users\\Julie White\\Box Sync\\MHC_paper\\MHC_analysis\\Manual_Landmarking\\LinearDistancesToCalculate.txt", sep = "\t", header = F, colClasses="character")
+```
+
+```{r}
+ArslanLinearDistances <- matrix(NA, nrow = length(unique(JulieManualLandmarks$IID)), ncol = 3*length(DistancesToCalculate$V4))
+
+rownames(ArslanLinearDistances) <- as.character(unique(JulieManualLandmarks$IID))
+
+colnames(ArslanLinearDistances) <- c(paste(DistancesToCalculate$V4, "_1", sep = ""), paste(DistancesToCalculate$V4,"_2",sep=""), paste(DistancesToCalculate$V4,"_3",sep=""))
+```
+
+```{r}
+
+
+for (i in 1:ncol(ArslanLinearDistances)){ #Iterations x Pairwise distances
+    if (i <= 84){
+        for (j in 1:nrow(ArslanLinearDistances)){ #People
+            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i,2]),] 
+            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i,3]),]
+            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_1, Landmark2$x_1, Landmark1$y_1, Landmark2$y_1, Landmark1$z_1, Landmark2$z_1) 
+        }
+    } else if (i > 84 & i <= 168){
+        for (j in 1:nrow(ArslanLinearDistances)){ #People
+            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,2]),] 
+            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,3]),]
+            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_2, Landmark2$x_2, Landmark1$y_2, Landmark2$y_2, Landmark1$z_2, Landmark2$z_2)
+        }
+    } else if (i > 168 & i <= 252){
+        for (j in 1:nrow(ArslanLinearDistances)){ #People
+            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,2]),] 
+            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,3]),]
+            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_3, Landmark2$x_3, Landmark1$y_3, Landmark2$y_3, Landmark1$z_3, Landmark2$z_3) 
+        }
+    } else {
+        print("Something wrong")
+    }
+}
+```
+
+```{r}
+rownames(ArslanLinearDistances) <- paste(rownames(ArslanLinearDistances), "_AZ", sep="")
+```
+
+```{r}
+JulieLinearDistances <- matrix(NA, nrow = length(unique(JulieManualLandmarks$IID)), ncol = 3*length(DistancesToCalculate$V4))
+
+rownames(JulieLinearDistances) <- as.character(unique(JulieManualLandmarks$IID))
+
+colnames(JulieLinearDistances) <- c(paste(DistancesToCalculate$V4, "_1", sep = ""), paste(DistancesToCalculate$V4,"_2",sep=""), paste(DistancesToCalculate$V4,"_3",sep=""))
+```
+
+```{r}
+for (i in 1:ncol(JulieLinearDistances)){ #Iterations x Pairwise distances
+    if (i <= 84){
+        for (j in 1:nrow(JulieLinearDistances)){ #People
+            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i,2]),] 
+            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i,3]),]
+            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_1, Landmark2$x_1, Landmark1$y_1, Landmark2$y_1, Landmark1$z_1, Landmark2$z_1) 
+        }
+    } else if (i > 84 & i <= 168){
+        for (j in 1:nrow(JulieLinearDistances)){ #People
+            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,2]),] 
+            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,3]),]
+            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_2, Landmark2$x_2, Landmark1$y_2, Landmark2$y_2, Landmark1$z_2, Landmark2$z_2)
+        }
+    } else if (i > 168 & i <= 252){
+        for (j in 1:nrow(JulieLinearDistances)){ #People
+            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,2]),] 
+            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,3]),]
+            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_3, Landmark2$x_3, Landmark1$y_3, Landmark2$y_3, Landmark1$z_3, Landmark2$z_3) 
+        }
+    } else {
+        print("Something wrong")
+    }
+}
+
+rm(Landmark1, Landmark2, i, j)
+```
+
+```{r}
+rownames(JulieLinearDistances) <- paste(rownames(JulieLinearDistances), "_JW", sep="")
+
+ArslanJulieLinearDistances <- rbind(ArslanLinearDistances, JulieLinearDistances)
+
+rm(ArslanLinearDistances, JulieLinearDistances)
+
+head(as.data.frame(ArslanJulieLinearDistances))
+```
+
+```{r}
+SDofSideReplicates <- as.data.frame(matrix(nrow=100, ncol=84))
+
+colnames(SDofSideReplicates) <- paste(DistancesToCalculate$V4, "_sd")
+
+rownames(SDofSideReplicates) <- rownames(ArslanJulieLinearDistances)
+
+for (i in 1:84){
+    SDofSideReplicates[i] <- apply(ArslanJulieLinearDistances, 1, function(x) sd(x[c(i,i+84,i+168)]))
+}
+```
+
+```{r}
+ggplot(data = melt(SDofSideReplicates), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable)) + theme(legend.position="none") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+SDofSideReplicates <- rbind(c(colMeans(SDofSideReplicates,na.rm=TRUE)), SDofSideReplicates)
+
+row.names(SDofSideReplicates)[1] <- "AverageSD"
+
+head(SDofSideReplicates)
+```
+
+##Average left and right replicates, then get the SD between the left and right. 
+
+```{r}
+LeftRightAvgDist <- as.data.frame(matrix(nrow=100, ncol=84))
+
+colnames(LeftRightAvgDist) <- paste(DistancesToCalculate$V4, " Avg")
+
+rownames(LeftRightAvgDist) <- rownames(ArslanJulieLinearDistances)
+
+for (i in 1:84){
+    LeftRightAvgDist[i] <- apply(ArslanJulieLinearDistances, 1, function(x) mean(x[c(i,i+84,i+168)]))
+}
+head(LeftRightAvgDist)
+```
+
+```{r}
+LeftRightAvgSD <- as.data.frame(matrix(nrow=100, ncol=42))
+
+colnames(LeftRightAvgSD) <- setdiff(unlist(strsplit(DistancesToCalculate$V5, split = "_")[1:42]), "left")
+rownames(LeftRightAvgSD) <- rownames(ArslanJulieLinearDistances)
+
+for (i in 1:42){
+    LeftRightAvgSD[i] <- apply(LeftRightAvgDist, 1, function(x) sd(x[c(i,i+42)]))
+}
+
+rm(DistancesToCalculate)
+head(LeftRightAvgSD)
+
+```
+
+```{r}
+ggplot(data = melt(LeftRightAvgSD), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable)) + theme(legend.position = "none", axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+LeftRightAvgSD <- rbind(c(colMeans(LeftRightAvgSD,na.rm=TRUE)), LeftRightAvgSD)
+row.names(LeftRightAvgSD)[1] <- "AverageSD"
+head(LeftRightAvgSD)
+```

@@ -1,0 +1,8 @@
+#Exclude the following: 
+.ipynb_checkpoints/*
+.Rproj.user/*
+Manual_Landmarking/*
+OmidLandmarks/*
+PeterLandmarks/*
+.RData
+.Rhistoy

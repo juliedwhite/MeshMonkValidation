@@ -1,0 +1,1613 @@
+---
+title: "RemappingValidation"
+output: html_notebook
+--- 
+#Getting necessary packages and functions
+```{r}
+library(ggplot2)
+library(readxl)
+library(readr)
+library(GGally)
+library(plyr)
+library(reshape2)
+library(geomorph)
+library(Morpho)
+library(car)
+library(R.matlab)
+```
+
+Multiple plot function
+```{r}
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+Euclidean distance function
+```{r}
+EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
+```
+
+#The dataset
+Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
+```{r}
+landmarks <- read_excel("C:/Users/Julie White/Box/MyFiles/MyResearch/RemappingValidation/PeterLandmarks/SparseLandmarkingManualAndAutomaticv20180226LOO.xlsx", sheet = "Combined")
+head(landmarks)
+```
+All the columns with "ml" are the manual landmarks placed by myself and Arslan. Three iterations by two raters = six total landmark placements
+
+J_surf_avg landmarks are the result of Peter averaging together my three iterations and then placing them on the facial surface. So they are likely to be a little different than the actual average of my coordinates
+
+A_surf_avg landmarks are the result of Peter averaging together Arslan's three iterations and then placing them on the facial surface. So they are likely to be a little different than the actual average of his coordinates
+
+B_surf_avg landmarks are the result of Peter averaging together all six iterations and then placing them on the facial surface. So they are likely to be a little different than the actual average
+
+J_auto landmarks are the result of Peter using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face
+
+A_auto landmarks are the result of Peter using the A_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face
+
+B_auto landmarks are the result of Peter using the B_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face
+
+J_loo landmarks are the result of Peter using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. 
+
+A_loo landmarks are the result of Peter using the A_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. 
+
+B_loo landmarks are the result of Peter using the B_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. 
+
+#The plan
+- Compare the coordinate values of the ML and surf landmarks to be assured that they are highly correlated
+- Compare the coordinate values of the ML and auto landmarks to be assured that they are highly correlated
+- Compare the coordinate values of the surf, auto, and loo landmarks to be assured that they are highly correlated
+- Pretend that the J_auto landmarks are a 4th iteration of my landmarks and calculate intra-observer error. Goal here is to see whether the auto landmarks have the same level of error as the ML landmarks
+- Pretend that the A_auto landmarks are a 4th iteration of Arslan's landmarks and calculate intra-observer error.
+- Use the ML and auto iterations to calculate intra observer error with just me and Arlan
+- Calculate intra-obser error with me, Arslan, and the third "both" observer
+
+#Compare ML with Peter's average surface landmarks 
+Average of Arslan's x y and z 
+```{r}
+landmarks$A_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3")])) 
+landmarks$A_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3")]))
+landmarks$A_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3")]))
+```
+Avearge of Julie's x y and z 
+```{r}
+landmarks$J_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
+landmarks$J_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
+landmarks$J_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+```
+Average of Arslan and Julie's x, y, and z
+```{r}
+landmarks$B_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
+landmarks$B_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "J_ml_y1", "J_ml_y2", "J_ml_y3")]))
+landmarks$B_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+```
+Peter took the average of our landmarks and placed them on to the anthropometric mask while requiring the points to have contact with the surface. So ths correlation between the manual landmarks and the surface landmarks should be strong.
+
+We can tell these are really correlated by point plots
+```{r}
+par(mfrow=c(3,3))
+plot(landmarks$A_ml_avgx, landmarks$A_surf_avgx)
+plot(landmarks$A_ml_avgy, landmarks$A_surf_avgy)
+plot(landmarks$A_ml_avgz, landmarks$A_surf_avgz)
+plot(landmarks$J_ml_avgx, landmarks$J_surf_avgx)
+plot(landmarks$J_ml_avgy, landmarks$J_surf_avgy)
+plot(landmarks$J_ml_avgz, landmarks$J_surf_avgz)
+plot(landmarks$B_ml_avgx, landmarks$B_surf_avgx)
+plot(landmarks$B_ml_avgy, landmarks$B_surf_avgy)
+plot(landmarks$B_ml_avgz, landmarks$B_surf_avgz)
+```
+Correlation between the manual landmarks and Peter's average surface landmarks.
+```{r}
+cor(landmarks$A_ml_avgx, landmarks$A_surf_avgx)
+cor(landmarks$A_ml_avgy, landmarks$A_surf_avgy)
+cor(landmarks$A_ml_avgz, landmarks$A_surf_avgz)
+cor(landmarks$J_ml_avgx, landmarks$J_surf_avgx)
+cor(landmarks$J_ml_avgy, landmarks$J_surf_avgy)
+cor(landmarks$J_ml_avgz, landmarks$J_surf_avgz)
+cor(landmarks$B_ml_avgx, landmarks$B_surf_avgx)
+cor(landmarks$B_ml_avgy, landmarks$B_surf_avgy)
+cor(landmarks$B_ml_avgz, landmarks$B_surf_avgz)
+```
+Euclidean distance between the manual landmarks and Peter's average surface landmarks.
+```{r}
+# Calculate euclidean distance between the manual and surface landmarks
+landmarks$A_ml_surf_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_avgx'], x['A_surf_avgx'], x['A_ml_avgy'], x['A_surf_avgy'], x['A_ml_avgz'], x['A_surf_avgz']))
+
+landmarks$J_ml_surf_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_avgx'], x['J_surf_avgx'], x['J_ml_avgy'], x['J_surf_avgy'], x['J_ml_avgz'], x['J_surf_avgz']))
+
+landmarks$B_ml_surf_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_ml_avgx'], x['B_surf_avgx'], x['B_ml_avgy'], x['B_surf_avgy'], x['B_ml_avgz'], x['B_surf_avgz']))
+
+# Plot
+ggplot(data = melt(landmarks[,c("ID", "LM.Num", "LM.Name", "A_ml_surf_euclid", "J_ml_surf_euclid", "B_ml_surf_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, color = variable))+geom_boxplot()+theme(legend.position = "top", axis.text.x = element_text(angle=90, hjust=1, vjust=0))+ylab("Euclidean Distance")
+```
+Combine all into one plot
+```{r}
+ggplot(data = melt(landmarks[,c("ID", "LM.Num", "LM.Name", "A_ml_surf_euclid", "J_ml_surf_euclid", "B_ml_surf_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, fill = LM.Name))+geom_boxplot()+theme(legend.position = "none", axis.text.x = element_text(angle=90, hjust=1, vjust=0)) + ylab("Euclidean Distance")
+```
+The distance from the manually placed averages to the surface averages are all under 1 mm, with some outliers. Satisfactory that the ML averages and Peter's surface averages are extremely close, which makes sense since he required the placements be on the surface. It also seems like the higher values are around the eyes, which might have been harder for us to place because we rely on the texture to place them, not necessarily the surface shape.
+
+#Compare ML with Peter's automatic LOO landmarks
+Point plots
+```{r}
+par(mfrow=c(3,3))
+plot(landmarks$A_ml_avgx, landmarks$A_loo_x)
+plot(landmarks$A_ml_avgy, landmarks$A_loo_y)
+plot(landmarks$A_ml_avgz, landmarks$A_loo_z)
+plot(landmarks$J_ml_avgx, landmarks$J_loo_x)
+plot(landmarks$J_ml_avgy, landmarks$J_loo_y)
+plot(landmarks$J_ml_avgz, landmarks$J_loo_z)
+plot(landmarks$B_ml_avgx, landmarks$B_loo_x)
+plot(landmarks$B_ml_avgy, landmarks$B_loo_y)
+plot(landmarks$B_ml_avgz, landmarks$B_loo_z)
+```
+Correlation between manual landmarks and Peter's automatic LOO landmarks
+```{r}
+cor(landmarks$A_ml_avgx, landmarks$A_loo_x)
+cor(landmarks$A_ml_avgy, landmarks$A_loo_y)
+cor(landmarks$A_ml_avgz, landmarks$A_loo_z)
+cor(landmarks$J_ml_avgx, landmarks$J_loo_x)
+cor(landmarks$J_ml_avgy, landmarks$J_loo_y)
+cor(landmarks$J_ml_avgz, landmarks$J_loo_z)
+cor(landmarks$B_ml_avgx, landmarks$B_loo_x)
+cor(landmarks$B_ml_avgy, landmarks$B_loo_y)
+cor(landmarks$B_ml_avgz, landmarks$B_loo_z)
+```
+The correlations are a little lower, but still very high.
+
+Euclidean distance between the ML landmarks and automatic landmarks.
+```{r}
+# Calculate euclidean distance between the manual and automatic landmarks
+landmarks$A_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_avgx'], x['A_loo_x'], x['A_ml_avgy'], x['A_loo_y'], x['A_ml_avgz'], x['A_loo_z']))
+
+landmarks$J_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_avgx'], x['J_loo_x'], x['J_ml_avgy'], x['J_loo_y'], x['J_ml_avgz'], x['J_loo_z']))
+
+landmarks$B_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_ml_avgx'], x['B_loo_x'], x['B_ml_avgy'], x['B_loo_y'], x['B_ml_avgz'], x['B_loo_z']))
+
+# Plot
+ggplot(data = melt(landmarks[,c("ID", "LM.Num", "LM.Name", "A_ml_loo_euclid", "J_ml_loo_euclid", "B_ml_loo_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, fill = variable))+geom_boxplot()+theme(legend.position = "top", axis.text.x = element_text(angle=90, hjust=1, vjust=0)) +ylab("Euclidean Distance")
+```
+Distances are a good bit higher, but that makes sense because these are the automatically placed landmarks. 
+
+The Li paper had a plot (Fig4 C) of the distance between manual and auto, which I'll reproduce here by collapsing all three of the above boxplots into one for each landmark.
+```{r}
+ggplot(data = melt(landmarks[,c("ID", "LM.Num", "LM.Name", "A_ml_loo_euclid", "J_ml_loo_euclid", "B_ml_loo_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, fill = LM.Name))+geom_boxplot()+theme(legend.position = "none", axis.text.x = element_text(angle=90, hjust=1, vjust=0)) + ylab("Euclidean distance")
+```
+#Manual Landmarks intra-observer error
+##Arslan
+Get Arslan's data
+```{r}
+ArslanIntra <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+```
+###One measure of "error": the standard deviation from the x, y, and z values for each of Arslan's iterations. 
+Calculate the sdandard deviations across iterations for x, y, z
+```{r}
+ArslanIntra$A_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3")])) 
+ArslanIntra$A_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3")]))
+ArslanIntra$A_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3")]))
+```
+Average of Arslan's sd x, sd y, sd z across all landmarks
+```{r}
+mean(ArslanIntra$A_ml_sdx)
+mean(ArslanIntra$A_ml_sdy)
+mean(ArslanIntra$A_ml_sdz)
+```
+Boxplot of Arslan's sd x, y, z
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")
+```
+Arslan has: 
+high sd x values for the endocanthion left and right
+high sd y values for pogonion
+high sd z values for Alar curvature left and right
+
+All on one plot
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Standard deviation of x, y, and z")
+```
+####Add in the automatic landmarks to see if this standard deviation increases appreciably.
+Calculate the standard deviations across iterations for x, y, z and auto
+```{r}
+ArslanIntra$A_mlloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "A_loo_x")])) 
+ArslanIntra$A_mlloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "A_loo_y")]))
+ArslanIntra$A_mlloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "A_loo_z")]))
+```
+Average of Arslan's sd x, sd y, sd z across all landmarks
+```{r}
+mean(ArslanIntra$A_mlloo_sdx)
+mean(ArslanIntra$A_mlloo_sdy)
+mean(ArslanIntra$A_mlloo_sdz)
+```
+Comparison of sd using just ML vs. using ML + loo
+```{r}
+multiplot(
+  ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_mlloo_sdx")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("X"), 
+  ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdy", "A_mlloo_sdy")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Y"), 
+  ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdz", "A_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Z"), 
+  cols=3)
+```
+Adding the autolandmarks does change the standard deviations, but it doesn't make them radically higher, and in some cases makes them lower. Red = ml, Blue = ml + loo
+
+All on one plot
+```{r}
+ArslanIntraSDMelt <- melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz", "A_mlloo_sdx", "A_mlloo_sdy", "A_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(ArslanIntraSDMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = ArslanIntraSDMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Standard Deviation (mm)")
+```
+###Another measure of "error" as the distance from each of Arslan's iteration to the mean of all three of his iterations iterations
+Euclidean distance between each of Arslan's iterations and the centroid of his iterations
+```{r}
+ArslanIntra$A_ml_euclid_1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_ml_avgx'], x['A_ml_y1'], x['A_ml_avgy'], x['A_ml_z1'], x['A_ml_avgz']))
+ArslanIntra$A_ml_euclid_2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['A_ml_avgx'], x['A_ml_y2'], x['A_ml_avgy'], x['A_ml_z2'], x['A_ml_avgz']))
+ArslanIntra$A_ml_euclid_3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['A_ml_avgx'], x['A_ml_y3'], x['A_ml_avgy'], x['A_ml_z3'], x['A_ml_avgz']))
+```
+Average of Arslan's euclidean distances across all landmarks
+```{r}
+mean(ArslanIntra$A_ml_euclid_1tocent)
+mean(ArslanIntra$A_ml_euclid_2tocent)
+mean(ArslanIntra$A_ml_euclid_3tocent)
+```
+Boxplot of Arslan's euclidean distances per landmark
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1tocent", "A_ml_euclid_2tocent", "A_ml_euclid_3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+Arslan has: 
+high euclidean distances for Endocanthion left and right on the first iteration
+mostly consistent euclidean distances on the second iteration
+high euclidean distances for pogonion on the thrid iteration
+
+All on one plot
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1tocent", "A_ml_euclid_2tocent", "A_ml_euclid_3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+ggtitle("Euclidean distance to centroid")
+```
+
+####Add in the automatic loo landmarks
+I'm not a huge fan of calculating the centroid of the manual + loo landmarks, but I think that's the only way to do a fair comparison - though its not really a good comparison since you're changing the average. For this reason we'll probably report the pairwise distances.
+
+Make new average with automatic loo landmarks.
+```{r}
+landmarks$A_mlloo_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "A_loo_x")])) 
+landmarks$A_mlloo_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "A_loo_y")]))
+landmarks$A_mlloo_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "A_loo_z")]))
+```
+Calculate euclidean distance to centroid from ML+loo
+```{r}
+ArslanIntra$A_mlloo_euclid_1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_mlloo_avgx'], x['A_ml_y1'], x['A_mlloo_avgy'], x['A_ml_z1'], x['A_mlloo_avgz']))
+ArslanIntra$A_mlloo_euclid_2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['A_mlloo_avgx'], x['A_ml_y2'], x['A_mlloo_avgy'], x['A_ml_z2'], x['A_mlloo_avgz']))
+ArslanIntra$A_mlloo_euclid_3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['A_mlloo_avgx'], x['A_ml_y3'], x['A_mlloo_avgy'], x['A_ml_z3'], x['A_mlloo_avgz']))
+ArslanIntra$A_mlloo_euclid_lootocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_loo_x'], x['A_mlloo_avgx'], x['A_loo_y'], x['A_mlloo_avgy'], x['A_loo_z'], x['A_mlloo_avgz']))
+```
+Mean of ML+loo euclidean distances.
+```{r}
+mean(ArslanIntra$A_mlloo_euclid_1tocent)
+mean(ArslanIntra$A_mlloo_euclid_2tocent)
+mean(ArslanIntra$A_mlloo_euclid_3tocent)
+mean(ArslanIntra$A_mlloo_euclid_lootocent)
+```
+Plot separately
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_mlloo_euclid_1tocent", "A_mlloo_euclid_2tocent", "A_mlloo_euclid_3tocent", "A_mlloo_euclid_lootocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+```
+Plot all on one graph to compare euclidean distances calculated using just ML vs. ml + loo
+```{r}
+ArslanIntraCentMelt <- melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1tocent", "A_ml_euclid_2tocent", "A_ml_euclid_3tocent", "A_mlloo_euclid_1tocent", "A_mlloo_euclid_2tocent", "A_mlloo_euclid_3tocent", "A_mlloo_euclid_lootocent")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(ArslanIntraCentMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = ArslanIntraCentMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance to centroid")
+```
+###Another measure of error: Pairwise euclidean distances from each of Arslan's iteration to the other iterations
+Calculate pairwise distances
+```{r}
+#Arslan x1 - x2
+#Arslan x1 - x3
+#Arslan x2 - x3
+
+ArslanIntra$A_ml_euclid_1to2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_ml_x2'], x['A_ml_y1'], x['A_ml_y2'], x['A_ml_z1'], x['A_ml_z2']))
+ArslanIntra$A_ml_euclid_1to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_ml_x3'], x['A_ml_y1'], x['A_ml_y3'], x['A_ml_z1'], x['A_ml_z3']))
+ArslanIntra$A_ml_euclid_2to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['A_ml_x3'], x['A_ml_y2'], x['A_ml_y3'], x['A_ml_z2'], x['A_ml_z3']))
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+```
+Combine all of these into one plot
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+####Add in the loo landmarks as a fourth iteration.
+Calculate pairwise distances
+```{r}
+#Arslan x1 - x2
+#Arslan x1 - x3
+#Arslan x2 - x3
+#Arslan x1 - loo
+#Arslan x2 - loo
+#Arslan x3 - loo
+
+ArslanIntra$A_ml_euclid_1toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_loo_x'], x['A_ml_y1'], x['A_loo_y'], x['A_ml_z1'], x['A_loo_z']))
+ArslanIntra$A_ml_euclid_2toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['A_loo_x'], x['A_ml_y2'], x['A_loo_y'], x['A_ml_z2'], x['A_loo_z']))
+ArslanIntra$A_ml_euclid_3toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['A_loo_x'], x['A_ml_y3'], x['A_loo_y'], x['A_ml_z3'], x['A_loo_z']))
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3", "A_ml_euclid_1toloo", "A_ml_euclid_2toloo", "A_ml_euclid_3toloo")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+```
+Compare the euclidean distances of just the manual landmarks against each other to the manual landmarks against the automatic loo landmarks
+```{r}
+ArslanIntraPairwiseMelt <- melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3", "A_ml_euclid_1toloo", "A_ml_euclid_2toloo", "A_ml_euclid_3toloo")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(ArslanIntraPairwiseMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = ArslanIntraPairwiseMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Pairwise euclidean distance between iterations")
+```
+Comparison of euclidean distances from just ML vs. those with ML + loo 
+```{r}
+ArslanIntraPairwiseMelt_JustML <- melt(ArslanIntra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+ArslanIntraPairwiseMelt2 <- rbind(ArslanIntraPairwiseMelt, ArslanIntraPairwiseMelt_JustML)
+
+rm(ArslanIntraPairwiseMelt_JustML)
+
+levels(ArslanIntraPairwiseMelt2$variable) <- c("ML+loo", "ML+loo", "ML", "ML", "ML")
+
+ggplot(ArslanIntraPairwiseMelt2, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+ theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1))+ylab("Euclidean distance")+ggtitle("Pairwise euclidean distance for just ML and ML+loo values") 
+```
+##Julie
+Get Julie's data
+```{r}
+JulieIntra <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+```
+####One measure of "error": the standard deviation from the x, y, and z values for each of Julie's iteration. 
+Calculate the sdandard deviations across iterations for x, y, z
+```{r}
+JulieIntra$J_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
+JulieIntra$J_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
+JulieIntra$J_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+```
+Average of Julie's sd x, y, z across all landmarks
+```{r}
+mean(JulieIntra$J_ml_sdx)
+mean(JulieIntra$J_ml_sdy)
+mean(JulieIntra$J_ml_sdz)
+```
+Boxplot of Julie's sd x, y, z 
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")
+```
+Julie has: 
+high sd x values for chelion left and right
+high sd y values for glabella, nasion, pogonion
+high sd z values for alar curvature left and right 
+
+All in one plot
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard deviation")+ggtitle("Standard deviation of x, y, and z")
+```
+####Add in the automatic landmarks to see if this standard deviation increases appreciably.
+Calculate the sdandard deviations across iterations for x, y, z and loo
+```{r}
+JulieIntra$J_mlloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3", "J_loo_x")])) 
+JulieIntra$J_mlloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3", "J_loo_y")]))
+JulieIntra$J_mlloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3", "J_loo_z")]))
+```
+Average of Julie's sd x, sd y, sd z across all landmarks
+```{r}
+mean(JulieIntra$J_mlloo_sdx)
+mean(JulieIntra$J_mlloo_sdy)
+mean(JulieIntra$J_mlloo_sdz)
+```
+Plot of ml + loo across x, y, and z
+```{r}
+multiplot(
+  ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_mlloo_sdx")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("X"), 
+  ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdy", "J_mlloo_sdy")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Y"), 
+  ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdz", "J_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Z"), 
+  cols=3)
+```
+Adding the auto loo landmarks does change the standard deviations, but it doesn't make them radically higher.
+
+All on one plot
+```{r}
+JulieIntraSDMelt <- melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz", "J_mlloo_sdx", "J_mlloo_sdy", "J_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(JulieIntraSDMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = JulieIntraSDMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Standard Deviation (mm)")
+```
+###Another measure of "error" as the distance from each of Julie's iteration to the mean of all three of her iterations
+Euclidean distance between each of Julie's iterations and the centroid of Julie's iterations
+```{r}
+JulieIntra$J_ml_euclid_1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_ml_avgx'], x['J_ml_y1'], x['J_ml_avgy'], x['J_ml_z1'], x['J_ml_avgz']))
+JulieIntra$J_ml_euclid_2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['J_ml_avgx'], x['J_ml_y2'], x['J_ml_avgy'], x['J_ml_z2'], x['J_ml_avgz']))
+JulieIntra$J_ml_euclid_3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x3'], x['J_ml_avgx'], x['J_ml_y3'], x['J_ml_avgy'], x['J_ml_z3'], x['J_ml_avgz']))
+```
+Average of Julie's euclidean distances across all landmarks
+```{r}
+mean(JulieIntra$J_ml_euclid_1tocent)
+mean(JulieIntra$J_ml_euclid_2tocent)
+mean(JulieIntra$J_ml_euclid_3tocent)
+```
+Boxplot of Julie's euclidean distances per landmark
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1tocent", "J_ml_euclid_2tocent", "J_ml_euclid_3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+Julie has: 
+high euclidean distances for glabella, nasion, and pogonion on all three iterations
+
+All on one plot
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1tocent", "J_ml_euclid_2tocent", "J_ml_euclid_3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+ggtitle("Euclidean distances to centroid")
+```
+
+####Add in automatic loo landmarks
+I'm not a huge fan of calculating the centroid of the manual + loo landmarks, but I think that's the only way to do a fair comparison - though its not really a good comparison since you're changing the average. For this reason we'll probably report the pairwise distances.
+
+Make new average with loomatic landmarks.
+```{r}
+landmarks$J_mlloo_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3", "J_loo_x")])) 
+landmarks$J_mlloo_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3", "J_loo_y")]))
+landmarks$J_mlloo_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3", "J_loo_z")]))
+```
+Calculate euclidean distance to centroid from ML+auto
+```{r}
+JulieIntra$J_mlloo_euclid_1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_mlloo_avgx'], x['J_ml_y1'], x['J_mlloo_avgy'], x['J_ml_z1'], x['J_mlloo_avgz']))
+JulieIntra$J_mlloo_euclid_2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['J_mlloo_avgx'], x['J_ml_y2'], x['J_mlloo_avgy'], x['J_ml_z2'], x['J_mlloo_avgz']))
+JulieIntra$J_mlloo_euclid_3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x3'], x['J_mlloo_avgx'], x['J_ml_y3'], x['J_mlloo_avgy'], x['J_ml_z3'], x['J_mlloo_avgz']))
+JulieIntra$J_mlloo_euclid_lootocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_loo_x'], x['J_mlloo_avgx'], x['J_loo_y'], x['J_mlloo_avgy'], x['J_loo_z'], x['J_mlloo_avgz']))
+```
+Mean of ML+auto euclidean distances.
+```{r}
+mean(JulieIntra$J_mlloo_euclid_1tocent)
+mean(JulieIntra$J_mlloo_euclid_2tocent)
+mean(JulieIntra$J_mlloo_euclid_3tocent)
+mean(JulieIntra$J_mlloo_euclid_lootocent)
+```
+Plot separately
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_mlloo_euclid_1tocent", "J_mlloo_euclid_2tocent", "J_mlloo_euclid_3tocent", "J_mlloo_euclid_lootocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+Plot all on one graph to compare euclidean distances calculated using just ML vs. auto loo
+```{r}
+JulieIntraCentMelt <- melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1tocent", "J_ml_euclid_2tocent", "J_ml_euclid_3tocent", "J_mlloo_euclid_1tocent", "J_mlloo_euclid_2tocent", "J_mlloo_euclid_3tocent", "J_mlloo_euclid_lootocent")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(JulieIntraCentMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = JulieIntraCentMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance to centroid")
+```
+###Another measure of error: Pairwise euclidean distances from each of Julie's iteration to the other iterations
+Calculate pairwise distances
+```{r}
+#Julie x1 - x2
+#Julie x1 - x3
+#Julie x2 - x3
+
+JulieIntra$J_ml_euclid_1to2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_ml_x2'], x['J_ml_y1'], x['J_ml_y2'], x['J_ml_z1'], x['J_ml_z2']))
+JulieIntra$J_ml_euclid_1to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_ml_x3'], x['J_ml_y1'], x['J_ml_y3'], x['J_ml_z1'], x['J_ml_z3']))
+JulieIntra$J_ml_euclid_2to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['J_ml_x3'], x['J_ml_y2'], x['J_ml_y3'], x['J_ml_z2'], x['J_ml_z3']))
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+Again, high glabella and pogonion values. 
+
+Combine all of these into one plot
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+ggtitle("Pairwise euclidean distances")
+```
+
+####Add in the auto loo landmarks as a fourth iteration.
+Calculate pairwise distances
+```{r}
+#Julie x1 - x2
+#Julie x1 - x3
+#Julie x2 - x3
+#Julie x1 - loo
+#Julie x2 - loo
+#Julie x3 - loo
+
+JulieIntra$J_ml_euclid_1toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_loo_x'], x['J_ml_y1'], x['J_loo_y'], x['J_ml_z1'], x['J_loo_z']))
+JulieIntra$J_ml_euclid_2toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['J_loo_x'], x['J_ml_y2'], x['J_loo_y'], x['J_ml_z2'], x['J_loo_z']))
+JulieIntra$J_ml_euclid_3toloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x3'], x['J_loo_x'], x['J_ml_y3'], x['J_loo_y'], x['J_ml_z3'], x['J_loo_z']))
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3", "J_ml_euclid_1toloo", "J_ml_euclid_2toloo", "J_ml_euclid_3toloo")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+Compare the euclidean distances of just the manual landmarks against each other to the manual landmarks against the automatic loo landmarks
+```{r}
+JulieIntraPairwiseMelt <- melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3", "J_ml_euclid_1toloo", "J_ml_euclid_2toloo", "J_ml_euclid_3toloo")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(JulieIntraPairwiseMelt$variable) <- c("ML", "ML", "ML", "ML+loo", "ML+loo", "ML+loo")
+
+ggplot(data = JulieIntraPairwiseMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Pairwise euclidean distance between iterations")
+```
+Comparison of euclidean distances from just ML vs. those with ML + loo 
+```{r}
+JulieIntraPairwiseMelt_JustML <- melt(JulieIntra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+JulieIntraPairwiseMelt2 <- rbind(JulieIntraPairwiseMelt, JulieIntraPairwiseMelt_JustML)
+
+rm(JulieIntraPairwiseMelt_JustML)
+
+#Change variable names in just ML
+levels(JulieIntraPairwiseMelt2$variable) <- c("ML+loo", "ML+loo", "ML", "ML", "ML")
+
+ggplot(JulieIntraPairwiseMelt2, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+ theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1))+ylab("Euclidean distance")+ggtitle("Pairwise euclidean distance for just ML and ML+loo values") 
+```
+##Average of Arslan and Julie as a new observer
+```{r}
+BothIntra <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+```
+###One measure of "error": the standard deviation from the x, y, and z values between the ML Both average and the Both auto loo
+Calculate the standard deviation between the ml average of A & J and the automatically placed landmark using this average
+```{r}
+BothIntra$B_mlloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_avgx", "B_loo_x")])) 
+BothIntra$B_mlloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_avgy", "B_loo_y")]))
+BothIntra$B_mlloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_avgz", "B_loo_z")]))
+```
+Average of sd x, y, z across all landmarks
+```{r}
+mean(BothIntra$B_mlloo_sdx)
+mean(BothIntra$B_mlloo_sdy)
+mean(BothIntra$B_mlloo_sdz)
+```
+Boxplot of Boths's sd x, y, z
+```{r}
+ggplot(data = melt(BothIntra[, c("ID", "LM.Num", "LM.Name", "B_mlloo_sdx", "B_mlloo_sdy", "B_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")
+```
+All in one plot
+```{r}
+ggplot(data = melt(BothIntra[, c("ID", "LM.Num", "LM.Name", "B_mlloo_sdx", "B_mlloo_sdy", "B_mlloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard deviation")+ggtitle("Standard deviation of x, y, and z")
+```
+###Another measure of "error": the distance from each iteration to the center
+Calculate the average of the ml and auto loo "B" observer
+```{r}
+landmarks$B_mlloo_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_avgx", "B_loo_x")])) 
+landmarks$B_mlloo_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_avgy", "B_loo_y")])) 
+landmarks$B_mlloo_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_avgz", "B_loo_z")])) 
+```
+Calculate the euclidean distance between the ml and this average, and the auto loo and this average
+```{r}
+BothIntra$B_mlloo_mltoavg <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_ml_avgx'], x['B_mlloo_avgx'], x['B_ml_avgy'], x['B_mlloo_avgy'], x['B_mlloo_avgz'], x['B_mlloo_avgz']))
+
+BothIntra$B_mlloo_lootoavg <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_loo_x'], x['B_mlloo_avgx'], x['B_loo_y'], x['B_mlloo_avgy'], x['B_loo_z'], x['B_mlloo_avgz']))
+```
+Average of these distances
+```{r}
+mean(BothIntra$B_mlloo_mltoavg)
+mean(BothIntra$B_mlloo_lootoavg)
+```
+Plot each of these
+```{r}
+ggplot(data = melt(BothIntra[, c("ID", "LM.Num", "LM.Name", "B_mlloo_mltoavg", "B_mlloo_lootoavg")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+```
+All in one plot
+```{r}
+ggplot(data = melt(BothIntra[, c("ID", "LM.Num", "LM.Name", "B_mlloo_mltoavg", "B_mlloo_lootoavg")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")
+```
+###Another measure of error: euclidean distance between iterations 
+Since I already calculated this when comparing the ML and auto measurements, just going to put the plot here.
+```{r}
+ggplot(data = melt(landmarks[,c("ID", "LM.Num", "LM.Name", "B_ml_loo_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, fill = variable))+geom_boxplot()+theme(legend.position = "top", axis.text.x = element_text(angle=90, hjust=1, vjust=0))
+```
+##Average intraobserver error across each landmark
+```{r}
+IntraByLandmark <- merge(ddply(.data = ArslanIntra, ~ LM.Name , summarize, 
+                               A_ml_sdx = mean(A_ml_sdx), 
+                               A_ml_sdy = mean(A_ml_sdy), 
+                               A_ml_sdz = mean(A_ml_sdz), 
+                               A_mlloo_sdx = mean(A_mlloo_sdx), 
+                               A_mlloo_sdy = mean(A_mlloo_sdy), 
+                               A_mlloo_sdz = mean(A_mlloo_sdz), 
+                               A_ml_euclid_1tocent = mean(A_ml_euclid_1tocent), 
+                               A_ml_euclid_2tocent = mean(A_ml_euclid_2tocent), 
+                               A_ml_euclid_3tocent = mean(A_ml_euclid_3tocent),
+                               A_mlloo_euclid_1tocent = mean(A_mlloo_euclid_1tocent),
+                               A_mlloo_euclid_2tocent = mean(A_mlloo_euclid_2tocent),
+                               A_mlloo_euclid_3tocent = mean(A_mlloo_euclid_3tocent),
+                               A_mlloo_euclid_lootocent = mean(A_mlloo_euclid_lootocent),
+                               A_ml_euclid_1to2 = mean(A_ml_euclid_1to2), 
+                               A_ml_euclid_1to3 = mean(A_ml_euclid_1to3), 
+                               A_ml_euclid_2to3 = mean(A_ml_euclid_2to3), 
+                               A_ml_euclid_1toloo = mean(A_ml_euclid_1toloo), 
+                               A_ml_euclid_1toloo = mean(A_ml_euclid_2toloo), 
+                               A_ml_euclid_1toloo = mean(A_ml_euclid_3toloo)),
+                         ddply(.data = JulieIntra, ~ LM.Name , summarize, 
+                               J_ml_sdx = mean(J_ml_sdx), 
+                               J_ml_sdy = mean(J_ml_sdy), 
+                               J_ml_sdz = mean(J_ml_sdz), 
+                               J_mlloo_sdx = mean(J_mlloo_sdx), 
+                               J_mlloo_sdy = mean(J_mlloo_sdy), 
+                               J_mlloo_sdz = mean(J_mlloo_sdz), 
+                               J_ml_euclid_1tocent = mean(J_ml_euclid_1tocent), 
+                               J_ml_euclid_2tocent = mean(J_ml_euclid_2tocent), 
+                               J_ml_euclid_3tocent = mean(J_ml_euclid_3tocent),
+                               J_mlloo_euclid_1tocent = mean(J_mlloo_euclid_1tocent),
+                               J_mlloo_euclid_2tocent = mean(J_mlloo_euclid_2tocent),
+                               J_mlloo_euclid_3tocent = mean(J_mlloo_euclid_3tocent),
+                               J_mlloo_euclid_lootocent = mean(J_mlloo_euclid_lootocent),
+                               J_ml_euclid_1to2 = mean(J_ml_euclid_1to2), 
+                               J_ml_euclid_1to3 = mean(J_ml_euclid_1to3), 
+                               J_ml_euclid_2to3 = mean(J_ml_euclid_2to3), 
+                               J_ml_euclid_1toloo = mean(J_ml_euclid_1toloo),
+                               J_ml_euclid_1toloo = mean(J_ml_euclid_2toloo),
+                               J_ml_euclid_1toloo = mean(J_ml_euclid_3toloo)), by = "LM.Name")
+IntraByLandmark <- merge(IntraByLandmark, 
+                         ddply(.data = BothIntra, ~ LM.Name, summarize,
+                               B_mlloo_mltoavg = mean(B_mlloo_mltoavg),
+                               B_mlloo_lootoavg = mean(B_mlloo_lootoavg)), 
+                         by = "LM.Name")
+IntraByLandmark <- merge(IntraByLandmark, 
+                         ddply(.data = landmarks, ~ LM.Name, summarize,
+                               B_ml_loo_euclid = mean(B_ml_loo_euclid)),
+                         by = "LM.Name")
+                         
+#Average
+t(as.data.frame.list(colMeans(IntraByLandmark[,-1],na.rm=TRUE)))
+```
+The sd x, y, z values might be slightly high - in John Starbuck's asymmetry paper he had mean measurement error of 0.26 along the x-dimension, 0.30 along the y-dimension and 0.31 along the z-dimension. But, he's more experienced at this than we are so it proves the point. 
+#Manual Landmarks inter-observer error
+Just going to do this on the average between all of each observer's iterations
+##One measure of "error": the standard deviation of the average x, y, and z values for each observer.
+Subset the data to just get x y and z landmarks, to keep the original landmark dataframe from getting cluttered
+```{r}
+Inter <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+```
+Calculate the standard deviation from Arslan's avg x, y, and z values, my avg x, y, and z values.
+```{r}
+Inter$AJ_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgx", "J_ml_avgx")])) 
+Inter$AJ_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgy", "J_ml_avgy")]))
+Inter$AJ_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgz", "J_ml_avgz")]))
+```
+Average of sd x, y, z across all landmarks
+```{r}
+mean(Inter$AJ_ml_sdx)
+mean(Inter$AJ_ml_sdy)
+mean(Inter$AJ_ml_sdz)
+```
+Boxplot of sd x, y, z
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "AJ_ml_sdx", "AJ_ml_sdy", "AJ_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")
+```
+One really high sdx value for chelion left
+```{r}
+Inter[which(Inter$AJ_ml_sdx == max(Inter$AJ_ml_sdx)),]
+```
+high sd y values for glabella, nasion, pogonion
+high sd z values for alar curvature left and right 
+
+All on one plot
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "AJ_ml_sdx", "AJ_ml_sdy", "AJ_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+ggtitle("Standard deviation between Arslan and Julie x, y, and z")
+```
+###Now calculate the interobserver error using the automatic loo landmarks
+Calculate the standard deviation between the A and J automatic loo landmarks. 
+```{r}
+Inter$AJ_loo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_loo_x", "J_loo_x")])) 
+Inter$AJ_loo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_loo_y", "J_loo_y")]))
+Inter$AJ_loo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_loo_z", "J_loo_z")]))
+```
+Average of sd x, y, z across all landmarks
+```{r}
+mean(Inter$AJ_loo_sdx)
+mean(Inter$AJ_loo_sdy)
+mean(Inter$AJ_loo_sdz)
+```
+Boxplot of sd x, y, z
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "AJ_loo_sdx", "AJ_loo_sdy", "AJ_loo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")
+```
+Plot the sd values for MLs and auto
+```{r}
+InterSDMelt <- melt(Inter, id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterSDMelt$variable) <- c("ML", "ML", "ML", "loo", "loo", "loo")
+
+ggplot(InterSDMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Standard Deviation (mm)")+facet_wrap(~variable)
+```
+##Another measure of "error" as the distance from each rater's iterations to the mean of all observers
+Euclidean distance between each rater's iterations and the centroid of all six iterations (the B values)
+```{r}
+#Arslan
+Inter$Ml_euclid_A1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['B_ml_avgx'], x['A_ml_y1'], x['B_ml_avgy'], x['A_ml_z1'], x['B_ml_avgz']))
+Inter$Ml_euclid_A2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['B_ml_avgx'], x['A_ml_y2'], x['B_ml_avgy'], x['A_ml_z2'], x['B_ml_avgz']))
+Inter$Ml_euclid_A3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['B_ml_avgx'], x['A_ml_y3'], x['B_ml_avgy'], x['A_ml_z3'], x['B_ml_avgz']))
+
+#Julie
+Inter$Ml_euclid_J1tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['B_ml_avgx'], x['J_ml_y1'], x['B_ml_avgy'], x['J_ml_z1'], x['B_ml_avgz']))
+Inter$Ml_euclid_J2tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['B_ml_avgx'], x['J_ml_y2'], x['B_ml_avgy'], x['J_ml_z2'], x['B_ml_avgz']))
+Inter$Ml_euclid_J3tocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x3'], x['B_ml_avgx'], x['J_ml_y3'], x['B_ml_avgy'], x['J_ml_z3'], x['B_ml_avgz']))
+```
+Average of euclidean distances across all landmarks
+```{r}
+mean(Inter$Ml_euclid_A1tocent)
+mean(Inter$Ml_euclid_A2tocent)
+mean(Inter$Ml_euclid_A3tocent)
+mean(Inter$Ml_euclid_J1tocent)
+mean(Inter$Ml_euclid_J2tocent)
+mean(Inter$Ml_euclid_J3tocent)
+```
+Boxplot ofeuclidean distances per landmark
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+facet_wrap(~variable)
+```
+Combine Arslan's and Julie's into one plot to compare them
+```{r}
+InterMLMelt <- melt(Inter[c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterMLMelt$variable) <- c("Arslan", "Arslan", "Arslan", "Julie", "Julie", "Julie")
+
+ggplot(InterMLMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance to centroid")
+```
+All in one plot
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+ggtitle("Euclidean distance of A and J's iterations to centroid of all six iterations")
+```
+###Now calculate the interobserver error using the automatic loo landmarks
+####Using the B-auto as the centroid
+Euclidean distance between each rater's iterations and the B auto loo landmark (trained using the centroid of all six iterations)
+```{r}
+#Arslan
+Inter$loo_euclid_AtoB <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_loo_x'], x['B_loo_x'], x['A_loo_y'], x['B_loo_y'], x['A_loo_z'], x['B_loo_z']))
+
+#Julie
+Inter$loo_euclid_JtoB <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_loo_x'], x['B_loo_x'], x['J_loo_y'], x['B_loo_y'], x['J_loo_z'], x['B_loo_z']))
+```
+Mean
+```{r}
+mean(Inter$loo_euclid_AtoB)
+mean(Inter$loo_euclid_JtoB)
+```
+Boxplot ofeuclidean distances per landmark
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent", "loo_euclid_AtoB", "loo_euclid_JtoB")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+facet_wrap(~variable)
+```
+Combine Arslan's and Julie's ML and the auto to B into one plot to compare them
+```{r}
+InterlooToBMelt <- melt(Inter[c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent", "loo_euclid_AtoB", "loo_euclid_JtoB")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterlooToBMelt$variable) <- c("Arslan ML", "Arslan ML", "Arslan ML", "Julie ML", "Julie ML", "Julie ML", "loo", "loo")
+
+ggplot(InterlooToBMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance to centroid")
+```
+####Using average of A and J auto loo as centroid
+Calculating the average
+```{r}
+landmarks$AJ_loo_x <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_loo_x", "J_loo_x")]))
+landmarks$AJ_loo_y <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_loo_y", "J_loo_y")]))
+landmarks$AJ_loo_z <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_loo_z", "J_loo_z")]))
+```
+Euclidean distance between each rater's iterations and the centroid 
+```{r}
+#Arslan
+Inter$AJ_loo_euclid_Atocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_loo_x'], x['AJ_loo_x'], x['A_loo_y'], x['AJ_loo_y'], x['A_loo_z'], x['AJ_loo_z']))
+
+#Julie
+Inter$AJ_loo_euclid_Jtocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_loo_x'], x['AJ_loo_x'], x['J_loo_y'], x['AJ_loo_y'], x['J_loo_z'], x['AJ_loo_z']))
+
+#Both
+Inter$AJ_loo_euclid_Btocent <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_loo_x'], x['AJ_loo_x'], x['B_loo_y'], x['AJ_loo_y'], x['B_loo_z'], x['AJ_loo_z']))
+```
+Mean
+```{r}
+mean(Inter$AJ_loo_euclid_Atocent)
+mean(Inter$AJ_loo_euclid_Jtocent)
+mean(Inter$AJ_loo_euclid_Btocent)
+```
+The euclidean distance between the "B_auto" and the average of both is really small, probably artifically small, so probably not going to use it.
+
+Boxplot of euclidean distances per landmark, without AJ_loo_euclid_Btocent
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent", "loo_euclid_AtoB", "loo_euclid_JtoB", "AJ_loo_euclid_Atocent", "AJ_loo_euclid_Jtocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+facet_wrap(~variable)
+```
+Combine Arslan's and Julie's ML and the auto to B and auto to cent into one plot to compare them
+```{r}
+InterLooToCentMelt <- melt(Inter[c("ID", "LM.Num", "LM.Name", "Ml_euclid_A1tocent", "Ml_euclid_A2tocent", "Ml_euclid_A3tocent", "Ml_euclid_J1tocent", "Ml_euclid_J2tocent", "Ml_euclid_J3tocent", "loo_euclid_AtoB", "loo_euclid_JtoB", "AJ_loo_euclid_Atocent", "AJ_loo_euclid_Jtocent")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterLooToCentMelt$variable) <- c("ML", "ML", "ML to B", "ML to B", "ML to B", "ML to B", "loo to B", "loo to B", "loo to AJ avg", "loo to AJ avg")
+
+ggplot(InterLooToCentMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance to centroid")
+```
+##Another measure of error: Pairwise euclidean distances from each observer's iteration to the other observer's iterations
+Calculate the pairwise distances from each one of Arslan's iterations to each one of my iterations
+```{r}
+#Arslan x1 - Julie x1
+#Arslan x1 - Julie x2
+#Arslan x1 - Julie x3
+#Arslan x2 - Julie x1
+#Arslan x2 - Julie x2
+#Arslan x2 - Julie x3
+#Arslan x3 - Julie x1
+#Arslan x3 - Julie x2
+#Arslan x3 - Julie x3
+
+Inter$AJ_euclid_A1toJ1 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['J_ml_x1'], x['A_ml_y1'], x['J_ml_y1'], x['A_ml_z1'], x['J_ml_z1']))
+Inter$AJ_euclid_A1toJ2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['J_ml_x2'], x['A_ml_y1'], x['J_ml_y2'], x['A_ml_z1'], x['J_ml_z2']))
+Inter$AJ_euclid_A1toJ3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['J_ml_x3'], x['A_ml_y1'], x['J_ml_y3'], x['A_ml_z1'], x['J_ml_z3']))
+Inter$AJ_euclid_A2toJ1 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['J_ml_x1'], x['A_ml_y2'], x['J_ml_y1'], x['A_ml_z2'], x['J_ml_z1']))
+Inter$AJ_euclid_A2toJ2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['J_ml_x2'], x['A_ml_y2'], x['J_ml_y2'], x['A_ml_z2'], x['J_ml_z2']))
+Inter$AJ_euclid_A2toJ3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['J_ml_x3'], x['A_ml_y2'], x['J_ml_y3'], x['A_ml_z2'], x['J_ml_z3']))
+Inter$AJ_euclid_A3toJ1 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['J_ml_x1'], x['A_ml_y3'], x['J_ml_y1'], x['A_ml_z3'], x['J_ml_z1']))
+Inter$AJ_euclid_A3toJ2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['J_ml_x2'], x['A_ml_y3'], x['J_ml_y2'], x['A_ml_z3'], x['J_ml_z2']))
+Inter$AJ_euclid_A3toJ3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['J_ml_x3'], x['A_ml_y3'], x['J_ml_y3'], x['A_ml_z3'], x['J_ml_z3']))
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "AJ_euclid_A1toJ1", "AJ_euclid_A1toJ2", "AJ_euclid_A1toJ3", "AJ_euclid_A2toJ1", "AJ_euclid_A2toJ2", "AJ_euclid_A2toJ3", "AJ_euclid_A3toJ1", "AJ_euclid_A3toJ2", "AJ_euclid_A3toJ3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+facet_wrap(~variable)
+```
+Plot all in one
+```{r}
+ggplot(data = melt(Inter[, c("ID", "LM.Num", "LM.Name", "AJ_euclid_A1toJ1", "AJ_euclid_A1toJ2", "AJ_euclid_A1toJ3", "AJ_euclid_A2toJ1", "AJ_euclid_A2toJ2", "AJ_euclid_A2toJ3", "AJ_euclid_A3toJ1", "AJ_euclid_A3toJ2", "AJ_euclid_A3toJ3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=LM.Name))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+ggtitle("Pairwise euclidean distance for all observers and iterations")
+```
+####Add in automatic loo landmarks
+```{r}
+Inter$Euclid_A1toJloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['J_loo_x'], x['A_ml_y1'], x['J_loo_y'], x['A_ml_z1'], x['J_loo_z']))
+Inter$Euclid_A2toJloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['J_loo_x'], x['A_ml_y2'], x['J_loo_y'], x['A_ml_z2'], x['J_loo_z']))
+Inter$Euclid_A3toJloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x3'], x['J_loo_x'], x['A_ml_y3'], x['J_loo_y'], x['A_ml_z3'], x['J_loo_z']))
+Inter$Euclid_J1toAloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['A_loo_x'], x['J_ml_y1'], x['A_loo_y'], x['J_ml_z1'], x['A_loo_z']))
+Inter$Euclid_J2toAloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['A_loo_x'], x['J_ml_y2'], x['A_loo_y'], x['J_ml_z2'], x['A_loo_z']))
+Inter$Euclid_J3toAloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x3'], x['A_loo_x'], x['J_ml_y3'], x['A_loo_y'], x['J_ml_z3'], x['A_loo_z']))
+Inter$Euclid_AlootoJloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_loo_x'], x['J_loo_x'], x['A_loo_y'], x['J_loo_y'], x['A_loo_z'], x['J_loo_z']))
+```
+Compare ML to ML, vs ML to Auto loo, vs Auto loo to Auto loo
+```{r}
+InterPairwiseMelt <- melt(Inter[c("ID", "LM.Num", "LM.Name", "AJ_euclid_A1toJ1", "AJ_euclid_A1toJ2", "AJ_euclid_A1toJ3", "AJ_euclid_A2toJ1", "AJ_euclid_A2toJ2", "AJ_euclid_A2toJ3", "AJ_euclid_A3toJ1", "AJ_euclid_A3toJ2", "AJ_euclid_A3toJ3", "Euclid_A1toJloo", "Euclid_A2toJloo", "Euclid_A3toJloo", "Euclid_J1toAloo", "Euclid_J2toAloo", "Euclid_J3toAloo", "Euclid_AlootoJloo")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterPairwiseMelt$variable) <- c("ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to ML", "ML to loo", "ML to loo", "ML to loo", "ML to loo", "ML to loo", "ML to loo", "loo to loo")
+
+ggplot(InterPairwiseMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Pairwise euclidean distance")
+```
+#####Do the same thing, but this time with the averages of Arslan and Julie
+```{r}
+Inter$Euclid_AavgtoJavg <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_avgx'], x['J_ml_avgx'], x['A_ml_avgy'], x['J_ml_avgy'], x['A_ml_avgz'], x['J_ml_avgz']))
+Inter$Euclid_AavgtoJloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_avgx'], x['J_loo_x'], x['A_ml_avgy'], x['J_loo_y'], x['A_ml_avgz'], x['J_loo_z']))
+Inter$Euclid_JavgtoAloo <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_avgx'], x['A_loo_x'], x['J_ml_avgy'], x['A_loo_y'], x['J_ml_avgz'], x['A_loo_z']))
+```
+Compare ML to ML vs ML to Auto vs Auto to Auto
+```{r}
+InterPairwiseAvgMelt <- melt(Inter[c("ID", "LM.Num", "LM.Name", "Euclid_AavgtoJavg", "Euclid_AavgtoJloo", "Euclid_JavgtoAloo", "Euclid_AlootoJloo")], id.vars = c("ID", "LM.Num", "LM.Name"))
+
+levels(InterPairwiseAvgMelt$variable) <- c("ML to ML", "ML to loo", "ML to loo", "loo to loo")
+
+ggplot(InterPairwiseAvgMelt, aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Pairwise euclidean distance")
+```
+
+##Average interobserver error across each landmark
+```{r}
+InterByLandmark <- ddply(.data = Inter, ~ LM.Name , summarize, 
+                         AJ_ml_sdx = mean(AJ_ml_sdx), 
+                         AJ_ml_sdy = mean(AJ_ml_sdy), 
+                         AJ_ml_sdz = mean(AJ_ml_sdz),
+                         AJ_loo_sdx = mean(AJ_loo_sdx),
+                         AJ_loo_sdy = mean(AJ_loo_sdy),
+                         AJ_loo_sdz = mean(AJ_loo_sdz),
+                         Ml_euclid_A1tocent = mean(Ml_euclid_A1tocent), 
+                         Ml_euclid_A2tocent = mean(Ml_euclid_A2tocent), 
+                         Ml_euclid_A3tocent = mean(Ml_euclid_A3tocent), 
+                         Ml_euclid_J1tocent = mean(Ml_euclid_J1tocent), 
+                         Ml_euclid_J2tocent = mean(Ml_euclid_J2tocent), 
+                         Ml_euclid_J3tocent = mean(Ml_euclid_J3tocent), 
+                         loo_euclid_AtoB = mean(loo_euclid_AtoB), 
+                         loo_euclid_JtoB = mean(loo_euclid_JtoB), 
+                         AJ_loo_euclid_Atocent = mean(AJ_loo_euclid_Atocent),
+                         AJ_loo_euclid_Jtocent = mean(AJ_loo_euclid_Jtocent),
+                         AJ_loo_euclid_Btocent = mean(AJ_loo_euclid_Btocent),
+                         AJ_euclid_A1toJ1 = mean(AJ_euclid_A1toJ1),
+                         AJ_euclid_A1toJ2 = mean(AJ_euclid_A1toJ2), 
+                         AJ_euclid_A1toJ3 = mean(AJ_euclid_A1toJ3), 
+                         AJ_euclid_A2toJ1 = mean(AJ_euclid_A2toJ1), 
+                         AJ_euclid_A2toJ2 = mean(AJ_euclid_A2toJ2), 
+                         AJ_euclid_A2toJ3 = mean(AJ_euclid_A2toJ3), 
+                         AJ_euclid_A3toJ1 = mean(AJ_euclid_A3toJ1), 
+                         AJ_euclid_A3toJ2 = mean(AJ_euclid_A3toJ2), 
+                         AJ_euclid_A3toJ3 = mean(AJ_euclid_A3toJ3),
+                         Euclid_A1toJloo = mean(Euclid_A1toJloo),
+                         Euclid_A2toJloo = mean(Euclid_A2toJloo),
+                         Euclid_A3toJloo = mean(Euclid_A3toJloo),
+                         Euclid_J1toAloo = mean(Euclid_J1toAloo),
+                         Euclid_J2toAloo = mean(Euclid_J2toAloo),
+                         Euclid_J3toAloo = mean(Euclid_J3toAloo),
+                         Euclid_AlootoJloo = mean(Euclid_AlootoJloo),
+                         Euclid_AavgtoJavg = mean(Euclid_AavgtoJavg),
+                         Euclid_AavgtoJloo = mean(Euclid_AavgtoJloo),
+                         Euclid_JavgtoAloo = mean(Euclid_JavgtoAloo))
+
+#Average
+t(as.data.frame.list(colMeans(InterByLandmark[,-1],na.rm=TRUE)))
+```
+
+****Start HERE****
+#Are the intraobserver errors smaller than the interobserver errors?
+##Using distances to average
+Make a new dataframe to store these results so we can more easily compare them
+```{r}
+ML_ToAvg_CompareInterIntra <- as.data.frame(cbind(ArslanIntra$ID, ArslanIntra$LM.Num, ArslanIntra$LM.Name, ArslanIntra$A_ml_avg_euclid_tocent, JulieIntra$J_ml_avg_euclid_tocent, Inter$B_ml_avg_euclid_tocent))
+colnames(ML_ToAvg_CompareInterIntra) <- c("ID", "LM.Num", "LM.Name", "A_ml_avg_euclid_tocent", "J_ml_avg_euclid_tocent", "B_ml_avg_euclid_tocent")
+ML_ToAvg_CompareInterIntra$A_ml_avg_euclid_tocent <- as.numeric(as.character(ML_ToAvg_CompareInterIntra$A_ml_avg_euclid_tocent))
+ML_ToAvg_CompareInterIntra$J_ml_avg_euclid_tocent <- as.numeric(as.character(ML_ToAvg_CompareInterIntra$J_ml_avg_euclid_tocent))
+ML_ToAvg_CompareInterIntra$B_ml_avg_euclid_tocent <- as.numeric(as.character(ML_ToAvg_CompareInterIntra$B_ml_avg_euclid_tocent))
+
+#Average between Arslan and Julie's intraobserver error
+ML_ToAvg_CompareInterIntra$AJavg_ml_avg_euclid_tocent <- apply(ML_ToAvg_CompareInterIntra[4:ncol(ML_ToAvg_CompareInterIntra)], 1, function(x) mean(x[c("A_ml_avg_euclid_tocent", "J_ml_avg_euclid_tocent")]))
+
+head(ML_ToAvg_CompareInterIntra)
+```
+Plot the average of Arslan's and my intraobserver errors with the interobserver errors for the distances to the centroid
+```{r}
+ggplot(data = melt(ML_ToAvg_CompareInterIntra[,c("ID", "LM.Num", "LM.Name", "A_ml_avg_euclid_tocent", "J_ml_avg_euclid_tocent", "B_ml_avg_euclid_tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, color=variable))+geom_boxplot(outlier.color = NULL) + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1))+ylab("Euclidean distance")+ggtitle("Comparison of intraobserver errors and interobserver error using distances to centroid")
+```
+It seems like our intraobserver errors are consistently smaller than the interobserver errors.
+
+Make sure of this using average per landmark
+```{r}
+ML_ToAvg_CompareInterIntra_LMAvg <- aggregate(ML_ToAvg_CompareInterIntra[, c("AJavg_ml_avg_euclid_tocent", "B_ml_avg_euclid_tocent")], list(ML_ToAvg_CompareInterIntra$LM.Name), mean)
+ML_ToAvg_CompareInterIntra_LMAvg$SmallerValue <- ML_ToAvg_CompareInterIntra_LMAvg$AJavg_ml_avg_euclid_tocent < ML_ToAvg_CompareInterIntra_LMAvg$B_ml_avg_euclid_tocent
+
+ML_ToAvg_CompareInterIntra_LMAvg$SmallerValue[ML_ToAvg_CompareInterIntra_LMAvg$SmallerValue == "TRUE"] <- "Intraobserver avg"
+ML_ToAvg_CompareInterIntra_LMAvg$SmallerValue[ML_ToAvg_CompareInterIntra_LMAvg$SmallerValue == "False"] <- "Interobserver"
+
+ML_ToAvg_CompareInterIntra_LMAvg
+```
+Answer: In all cases, the average of my and Arslan's intraobserver averages is smaller than the Interobserver average.
+####Using pairwise distances
+Make a new dataframe to store the results so we can more easily compare them.
+```{r}
+ML_Pairwise_CompareInterIntra <- as.data.frame(cbind(ArslanIntra$ID, ArslanIntra$LM.Num, ArslanIntra$LM.Name, ArslanIntra$A_ml_avg_euclid_pairwise, JulieIntra$J_ml_avg_euclid_pairwise, Inter$B_ml_avg_euclid_pairwise))
+colnames(ML_Pairwise_CompareInterIntra) <- c("ID", "LM.Num", "LM.Name", "A_ml_avg_euclid_pairwise", "J_ml_avg_euclid_pairwise", "B_ml_avg_euclid_pairwise")
+ML_Pairwise_CompareInterIntra$A_ml_avg_euclid_pairwise <- as.numeric(as.character(ML_Pairwise_CompareInterIntra$A_ml_avg_euclid_pairwise))
+ML_Pairwise_CompareInterIntra$J_ml_avg_euclid_pairwise <- as.numeric(as.character(ML_Pairwise_CompareInterIntra$J_ml_avg_euclid_pairwise))
+ML_Pairwise_CompareInterIntra$B_ml_avg_euclid_pairwise <- as.numeric(as.character(ML_Pairwise_CompareInterIntra$B_ml_avg_euclid_pairwise))
+
+#Average between Arslan and Julie's intraobserver error
+ML_Pairwise_CompareInterIntra$AJavg_ml_avg_euclid_pairwise <- apply(ML_Pairwise_CompareInterIntra[4:ncol(ML_Pairwise_CompareInterIntra)], 1, function(x) mean(x[c("A_ml_avg_euclid_pairwise", "J_ml_avg_euclid_pairwise")]))
+
+head(ML_Pairwise_CompareInterIntra)
+```
+Plot the average of Arslan's and my intraobserver errors with the interobserver errors for the pairwise distances
+```{r}
+ggplot(data = melt(ML_Pairwise_CompareInterIntra[,c("ID", "LM.Num", "LM.Name", "A_ml_avg_euclid_pairwise", "J_ml_avg_euclid_pairwise", "B_ml_avg_euclid_pairwise")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, color=variable))+geom_boxplot(outlier.colour = NULL)+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1))+ylab("Euclidean distance") + ggtitle("Comparison of average intraobserver errors and interobserver error using pairwise distances")
+```
+It seems like our intraobserver errors are consistently smaller than the interobserver errors.
+
+Make sure of this using average per landmark
+```{r}
+ML_Pairwise_CompareInterIntra_LMAvg <- aggregate(ML_Pairwise_CompareInterIntra[, c("AJavg_ml_avg_euclid_pairwise", "B_ml_avg_euclid_pairwise")], list(ML_Pairwise_CompareInterIntra$LM.Name), mean)
+ML_Pairwise_CompareInterIntra_LMAvg$SmallerValue <- ML_Pairwise_CompareInterIntra_LMAvg$AJavg_ml_avg_euclid_pairwise < ML_Pairwise_CompareInterIntra_LMAvg$B_ml_avg_euclid_pairwise
+
+ML_Pairwise_CompareInterIntra_LMAvg$SmallerValue[ML_Pairwise_CompareInterIntra_LMAvg$SmallerValue == "TRUE"] <- "Intraobserver avg"
+ML_Pairwise_CompareInterIntra_LMAvg$SmallerValue[ML_Pairwise_CompareInterIntra_LMAvg$SmallerValue == "False"] <- "Interobserver"
+
+ML_Pairwise_CompareInterIntra_LMAvg
+```
+Answer: In all cases, the average of my and Arslan's intraobserver averages is smaller than the Interobserver average.
+#Intraobserver error using the automatic landmarks
+Dataframe to store the results
+```{r}
+AutoLM <- landmarks[,c("ID", "LM.Num", "LM.Name", "A_auto_x", "A_auto_y", "A_auto_z", "J_auto_x", "J_auto_y", "J_auto_z", "B_auto_x", "B_auto_y", "B_auto_z")]
+```
+Calculate the centroid of all three observers 
+```{r}
+AutoLM$All_avg_x <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) mean(x[c("A_auto_x", "J_auto_x", "B_auto_x")]))
+AutoLM$All_avg_y <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) mean(x[c("A_auto_y", "J_auto_y", "B_auto_y")]))
+AutoLM$All_avg_z <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) mean(x[c("A_auto_z", "J_auto_z", "B_auto_z")]))
+```     
+Euclidean distance from each to the average
+```{r}
+AutoLM$A_auto_euclid_tocent <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) EuclideanDistance(x['A_auto_x'], x['All_avg_x'], x['A_auto_y'], x['All_avg_y'], x['A_auto_z'], x['All_avg_z']))
+AutoLM$J_auto_euclid_tocent <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) EuclideanDistance(x['J_auto_x'], x['All_avg_x'], x['J_auto_y'], x['All_avg_y'], x['J_auto_z'], x['All_avg_z']))
+AutoLM$B_auto_euclid_tocent <- apply(AutoLM[4:ncol(AutoLM)], 1, function(x) EuclideanDistance(x['B_auto_x'], x['All_avg_x'], x['B_auto_y'], x['All_avg_y'], x['B_auto_z'], x['All_avg_z']))
+```
+Plot
+```{r}
+ggplot(data = melt(AutoLM[, c("ID", "LM.Num", "LM.Name", "A_auto_euclid_tocent", "J_auto_euclid_tocent", "B_auto_euclid_tocent")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance")+facet_wrap(~variable)
+```
+Smaller euclidean distances when you use the average of all six iterations as the training set
+#Compare intraobserver error using surface average landmarks and those using automatic landmarks
+Make new dataframe with data to be plotted
+```{r}
+Compare_SurfAvg_Auto <- merge(SurfAvgLM[c("ID", "LM.Num", "LM.Name", "A_surf_euclid_tocent", "J_surf_euclid_tocent", "B_surf_euclid_tocent")], AutoLM[c("ID", "LM.Num", "LM.Name", "A_auto_euclid_tocent", "J_auto_euclid_tocent", "B_auto_euclid_tocent")], by = c("ID", "LM.Num", "LM.Name"))
+```
+Plot
+```{r}
+ggplot(data = melt(Compare_SurfAvg_Auto[c("LM.Name", "A_surf_euclid_tocent", "A_auto_euclid_tocent")], id.vars = c("LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+
+ggplot(data = melt(Compare_SurfAvg_Auto[c("LM.Name", "J_surf_euclid_tocent", "J_auto_euclid_tocent")], id.vars = c("LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+          
+ggplot(data = melt(Compare_SurfAvg_Auto[c("LM.Name", "B_surf_euclid_tocent", "B_auto_euclid_tocent")], id.vars = c("LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top")+ylab("Euclidean distance")
+```
+My and Arslan's surface average values have greater errors than the auto errors But, when we compare the "B" observer, which is the average of all six iterations from both me and Arslan, the surface average errors are smaller than the auto errors. 
+#Morpho Analysis
+##Need to create new dataframes with the data in Morpho format
+####Arslan Manual Landmarks
+Make empty dataframe to store landmarks
+```{r}
+Arslan_MorphoData_Manual <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Arslan_MorphoData_Manual) <- unique(landmarks$ID)
+colnames(Arslan_MorphoData_Manual) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Arslan_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Arslan_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Arslan_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Arslan_MorphoData_ManualMap$sourcecolumn <- rep(c(40,41,42), length = 2337)
+Arslan_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+Arslan_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Arslan_MorphoData_ManualMap)){Arslan_MorphoData_Manual[Arslan_MorphoData_ManualMap[i,3], Arslan_MorphoData_ManualMap[i,4]] <- landmarks[Arslan_MorphoData_ManualMap[i,1], Arslan_MorphoData_ManualMap[i,2]]
+}
+
+rm(i)
+
+Arslan_MorphoData_Manual <- as.matrix(Arslan_MorphoData_Manual)
+head(as.data.frame(Arslan_MorphoData_Manual))
+```
+Make groups dataframe that has sample information
+```{r}
+ArslanManualGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(ArslanManualGroups) <- c("ID", "StudyID", "Camera", "Observer")
+ArslanManualGroups$ID <- rownames(Arslan_MorphoData_Manual)
+ArslanManualGroups$StudyID <- unique(landmarks$ID)
+ArslanManualGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+ArslanManualGroups$Observer <- rep("Arslan", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Arslan_Morpho_Manual <- arrayspecs(A = Arslan_MorphoData_Manual, p = 19, k = 3)
+Arslan_Morpho_Manual.gpa <- gpagen(A=Arslan_Morpho_Manual, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Arslan_Morpho_Manual.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Arslan's Surface Average outliers
+```{r}
+plotOutliers(Arslan_Morpho_Manual.gpa$coords)
+```
+No outliers
+####Julie Manual Landmarks
+Make empty dataframe to store landmarks
+```{r}
+Julie_MorphoData_Manual <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Julie_MorphoData_Manual) <- unique(landmarks$ID)
+colnames(Julie_MorphoData_Manual) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Julie_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Julie_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Julie_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Julie_MorphoData_ManualMap$sourcecolumn <- rep(c(43,44,45), length = 2337)
+Julie_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+Julie_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Julie_MorphoData_ManualMap)){Julie_MorphoData_Manual[Julie_MorphoData_ManualMap[i,3], Julie_MorphoData_ManualMap[i,4]] <- landmarks[Julie_MorphoData_ManualMap[i,1], Julie_MorphoData_ManualMap[i,2]]
+}
+
+rm(i)
+
+Julie_MorphoData_Manual <- as.matrix(Julie_MorphoData_Manual)
+head(as.data.frame(Julie_MorphoData_Manual))
+```
+Make groups dataframe that has sample information
+```{r}
+JulieManualGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(JulieManualGroups) <- c("ID", "StudyID", "Camera", "Observer")
+JulieManualGroups$ID <- rownames(Julie_MorphoData_Manual)
+JulieManualGroups$StudyID <- unique(landmarks$ID)
+JulieManualGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+JulieManualGroups$Observer <- rep("Julie", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Julie_Morpho_Manual <- arrayspecs(A = Julie_MorphoData_Manual, p = 19, k = 3)
+Julie_Morpho_Manual.gpa <- gpagen(A=Julie_Morpho_Manual, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Julie_Morpho_Manual.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Julie's Surface Average outliers
+```{r}
+plotOutliers(Julie_Morpho_Manual.gpa$coords)
+```
+No outliers
+####Both Manual Landmarks
+Make empty dataframe to store landmarks
+```{r}
+Both_MorphoData_Manual <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Both_MorphoData_Manual) <- unique(landmarks$ID)
+colnames(Both_MorphoData_Manual) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Both_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Both_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Both_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Both_MorphoData_ManualMap$sourcecolumn <- rep(c(46,47,48), length = 2337)
+Both_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+Both_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Both_MorphoData_ManualMap)){Both_MorphoData_Manual[Both_MorphoData_ManualMap[i,3], Both_MorphoData_ManualMap[i,4]] <- landmarks[Both_MorphoData_ManualMap[i,1], Both_MorphoData_ManualMap[i,2]]
+}
+
+rm(i)
+
+Both_MorphoData_Manual <- as.matrix(Both_MorphoData_Manual)
+head(as.data.frame(Both_MorphoData_Manual))
+```
+Make groups dataframe that has sample information
+```{r}
+BothManualGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(BothManualGroups) <- c("ID", "StudyID", "Camera", "Observer")
+BothManualGroups$ID <- rownames(Both_MorphoData_Manual)
+BothManualGroups$StudyID <- unique(landmarks$ID)
+BothManualGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+BothManualGroups$Observer <- rep("Both", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Both_Morpho_Manual <- arrayspecs(A = Both_MorphoData_Manual, p = 19, k = 3)
+Both_Morpho_Manual.gpa <- gpagen(A=Both_Morpho_Manual, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Both_Morpho_Manual.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Both's Surface Average outliers
+```{r}
+plotOutliers(Both_Morpho_Manual.gpa$coords)
+```
+No outliers
+####Arslan Surface Average
+Make empty dataframe to store landmarks
+```{r}
+Arslan_MorphoData_SurfAvg <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Arslan_MorphoData_SurfAvg) <- unique(landmarks$ID)
+colnames(Arslan_MorphoData_SurfAvg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Arslan_MorphoData_SurfAvgMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Arslan_MorphoData_SurfAvgMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Arslan_MorphoData_SurfAvgMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Arslan_MorphoData_SurfAvgMap$sourcecolumn <- rep(c(25,26,27), length = 2337)
+Arslan_MorphoData_SurfAvgMap$targetrow <- rep(seq(1,41,1), each = 57)
+Arslan_MorphoData_SurfAvgMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Arslan_MorphoData_SurfAvgMap)){Arslan_MorphoData_SurfAvg[Arslan_MorphoData_SurfAvgMap[i,3], Arslan_MorphoData_SurfAvgMap[i,4]] <- landmarks[Arslan_MorphoData_SurfAvgMap[i,1], Arslan_MorphoData_SurfAvgMap[i,2]]
+}
+
+rm(i)
+
+Arslan_MorphoData_SurfAvg <- as.matrix(Arslan_MorphoData_SurfAvg)
+head(as.data.frame(Arslan_MorphoData_SurfAvg))
+```
+Make groups dataframe that has sample information
+```{r}
+ArslanSurfGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(ArslanSurfGroups) <- c("ID", "StudyID", "Camera", "Observer")
+ArslanSurfGroups$ID <- rownames(Arslan_MorphoData_SurfAvg)
+ArslanSurfGroups$StudyID <- unique(landmarks$ID)
+ArslanSurfGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+ArslanSurfGroups$Observer <- rep("Arslan", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Arslan_Morpho_SurfAvg <- arrayspecs(A = Arslan_MorphoData_SurfAvg, p = 19, k = 3)
+Arslan_Morpho_SurfAvg.gpa <- gpagen(A=Arslan_Morpho_SurfAvg, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Arslan_Morpho_SurfAvg.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Arslan's Surface Average outliers
+```{r}
+plotOutliers(Arslan_Morpho_SurfAvg.gpa$coords)
+```
+No outliers
+####Julie Surface Average
+Make empty dataframe to store landmarks
+```{r}
+Julie_MorphoData_SurfAvg <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Julie_MorphoData_SurfAvg) <- unique(landmarks$ID)
+colnames(Julie_MorphoData_SurfAvg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Julie_MorphoData_SurfAvgMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Julie_MorphoData_SurfAvgMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Julie_MorphoData_SurfAvgMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Julie_MorphoData_SurfAvgMap$sourcecolumn <- rep(c(22,23,24), length = 2337)
+Julie_MorphoData_SurfAvgMap$targetrow <- rep(seq(1,41,1), each = 57)
+Julie_MorphoData_SurfAvgMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Julie_MorphoData_SurfAvgMap)){Julie_MorphoData_SurfAvg[Julie_MorphoData_SurfAvgMap[i,3], Julie_MorphoData_SurfAvgMap[i,4]] <- landmarks[Julie_MorphoData_SurfAvgMap[i,1], Julie_MorphoData_SurfAvgMap[i,2]]
+}
+
+rm(i)
+
+Julie_MorphoData_SurfAvg <- as.matrix(Julie_MorphoData_SurfAvg)
+head(as.data.frame(Julie_MorphoData_SurfAvg))
+```
+Make groups dataframe that has sample information
+```{r}
+JulieSurfGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(JulieSurfGroups) <- c("ID", "StudyID", "Camera", "Observer")
+JulieSurfGroups$ID <- rownames(Julie_MorphoData_SurfAvg)
+JulieSurfGroups$StudyID <- unique(landmarks$ID)
+JulieSurfGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+JulieSurfGroups$Observer <- rep("Julie", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Julie_Morpho_SurfAvg <- arrayspecs(A = Julie_MorphoData_SurfAvg, p = 19, k = 3)
+Julie_Morpho_SurfAvg.gpa <- gpagen(A=Julie_Morpho_SurfAvg, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Julie_Morpho_SurfAvg.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Julie's Surface Average outliers
+```{r}
+plotOutliers(Julie_Morpho_SurfAvg.gpa$coords)
+```
+No outliers
+####Both Surface Average
+Make empty dataframe to store landmarks
+```{r}
+Both_MorphoData_SurfAvg <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Both_MorphoData_SurfAvg) <- unique(landmarks$ID)
+colnames(Both_MorphoData_SurfAvg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Both_MorphoData_SurfAvgMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Both_MorphoData_SurfAvgMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Both_MorphoData_SurfAvgMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Both_MorphoData_SurfAvgMap$sourcecolumn <- rep(c(28,29,30), length = 2337)
+Both_MorphoData_SurfAvgMap$targetrow <- rep(seq(1,41,1), each = 57)
+Both_MorphoData_SurfAvgMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Both_MorphoData_SurfAvgMap)){Both_MorphoData_SurfAvg[Both_MorphoData_SurfAvgMap[i,3], Both_MorphoData_SurfAvgMap[i,4]] <- landmarks[Both_MorphoData_SurfAvgMap[i,1], Both_MorphoData_SurfAvgMap[i,2]]
+}
+
+rm(i)
+
+Both_MorphoData_SurfAvg <- as.matrix(Both_MorphoData_SurfAvg)
+tail(as.data.frame(Both_MorphoData_SurfAvg))
+```
+Make groups dataframe that has sample information
+```{r}
+BothSurfGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(BothSurfGroups) <- c("ID", "StudyID", "Camera", "Observer")
+BothSurfGroups$ID <- rownames(Both_MorphoData_SurfAvg)
+BothSurfGroups$StudyID <- unique(landmarks$ID)
+BothSurfGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+BothSurfGroups$Observer <- rep("Both", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Both_Morpho_SurfAvg <- arrayspecs(A = Both_MorphoData_SurfAvg, p = 19, k = 3)
+Both_Morpho_SurfAvg.gpa <- gpagen(A=Both_Morpho_SurfAvg, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Both_Morpho_SurfAvg.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Both's Surface Average outliers
+```{r}
+plotOutliers(Both_Morpho_SurfAvg.gpa$coords)
+```
+No outliers
+####Arslan Auto
+Make empty dataframe to store landmarks
+```{r}
+Arslan_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Arslan_MorphoData_Auto) <- unique(landmarks$ID)
+colnames(Arslan_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Arslan_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Arslan_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Arslan_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Arslan_MorphoData_AutoMap$sourcecolumn <- rep(c(34,35,36), length = 2337)
+Arslan_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+Arslan_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Arslan_MorphoData_AutoMap)){Arslan_MorphoData_Auto[Arslan_MorphoData_AutoMap[i,3], Arslan_MorphoData_AutoMap[i,4]] <- landmarks[Arslan_MorphoData_AutoMap[i,1], Arslan_MorphoData_AutoMap[i,2]]
+}
+
+rm(i)
+
+Arslan_MorphoData_Auto <- as.matrix(Arslan_MorphoData_Auto)
+head(as.data.frame(Arslan_MorphoData_Auto))
+```
+Make groups dataframe that has sample information
+```{r}
+ArslanAutoGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(ArslanAutoGroups) <- c("ID", "StudyID", "Camera", "Observer")
+ArslanAutoGroups$ID <- rownames(Arslan_MorphoData_Auto)
+ArslanAutoGroups$StudyID <- unique(landmarks$ID)
+ArslanAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+ArslanAutoGroups$Observer <- rep("Arslan", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Arslan_Morpho_Auto <- arrayspecs(A = Arslan_MorphoData_Auto, p = 19, k = 3)
+Arslan_Morpho_Auto.gpa <- gpagen(A=Arslan_Morpho_Auto, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Arslan_Morpho_Auto.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Arslan's Surface Average outliers
+```{r}
+plotOutliers(Arslan_Morpho_Auto.gpa$coords)
+```
+No outliers
+####Julie Auto
+Make empty dataframe to store landmarks
+```{r}
+Julie_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Julie_MorphoData_Auto) <- unique(landmarks$ID)
+colnames(Julie_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Julie_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Julie_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Julie_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Julie_MorphoData_AutoMap$sourcecolumn <- rep(c(31,32,33), length = 2337)
+Julie_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+Julie_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Julie_MorphoData_AutoMap)){Julie_MorphoData_Auto[Julie_MorphoData_AutoMap[i,3], Julie_MorphoData_AutoMap[i,4]] <- landmarks[Julie_MorphoData_AutoMap[i,1], Julie_MorphoData_AutoMap[i,2]]
+}
+
+rm(i)
+
+Julie_MorphoData_Auto <- as.matrix(Julie_MorphoData_Auto)
+head(as.data.frame(Julie_MorphoData_Auto))
+```
+Make groups dataframe that has sample information
+```{r}
+JulieAutoGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(JulieAutoGroups) <- c("ID", "StudyID", "Camera", "Observer")
+JulieAutoGroups$ID <- rownames(Julie_MorphoData_Auto)
+JulieAutoGroups$StudyID <- unique(landmarks$ID)
+JulieAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+JulieAutoGroups$Observer <- rep("Julie", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Julie_Morpho_Auto <- arrayspecs(A = Julie_MorphoData_Auto, p = 19, k = 3)
+Julie_Morpho_Auto.gpa <- gpagen(A=Julie_Morpho_Auto, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Julie_Morpho_Auto.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Julie's Surface Average outliers
+```{r}
+plotOutliers(Julie_Morpho_Auto.gpa$coords)
+```
+No outliers
+####Both auto
+Make empty dataframe to store landmarks
+```{r}
+Both_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(Both_MorphoData_Auto) <- unique(landmarks$ID)
+colnames(Both_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+```
+Make map linking the old dataframe with the new one
+```{r}
+Both_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(Both_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+Both_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+Both_MorphoData_AutoMap$sourcecolumn <- rep(c(37,38,39), length = 2337)
+Both_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+Both_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+```
+Populate the new dataframe
+```{r}
+for (i in 1:nrow(Both_MorphoData_AutoMap)){Both_MorphoData_Auto[Both_MorphoData_AutoMap[i,3], Both_MorphoData_AutoMap[i,4]] <- landmarks[Both_MorphoData_AutoMap[i,1], Both_MorphoData_AutoMap[i,2]]
+}
+
+rm(i)
+
+Both_MorphoData_Auto <- as.matrix(Both_MorphoData_Auto)
+head(as.data.frame(Both_MorphoData_Auto))
+```
+Make groups dataframe that has sample information
+```{r}
+BothAutoGroups <- as.data.frame(matrix(nrow=41, ncol=4))
+colnames(BothAutoGroups) <- c("ID", "StudyID", "Camera", "Observer")
+BothAutoGroups$ID <- rownames(Both_MorphoData_Auto)
+BothAutoGroups$StudyID <- unique(landmarks$ID)
+BothAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+BothAutoGroups$Observer <- rep("Both", length = 41)
+```
+Convert the morpho data 2d matrix into a 3d matrix
+```{r}
+Both_Morpho_Auto <- arrayspecs(A = Both_MorphoData_Auto, p = 19, k = 3)
+Both_Morpho_Auto.gpa <- gpagen(A=Both_Morpho_Auto, print.progress = FALSE)
+```
+Plot all specimens
+```{r}
+plotAllSpecimens(Both_Morpho_Auto.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
+```
+Plot Both's Surface Average outliers
+```{r}
+plotOutliers(Both_Morpho_Auto.gpa$coords)
+```
+No outliers
+##Two-block partial least squares
+Two-block partial least squares to assess the degree of association between two blocks of Prorustes-aligned coordinates. 
+####Arslan
+Run the pls
+```{r}
+Arslan_PLS <- two.b.pls(Arslan_Morpho_Manual.gpa$coords, Arslan_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(Arslan_PLS)
+```
+Plot the pls
+```{r}
+plot(Arslan_PLS, warpgrids = FALSE)
+```
+Variance explained by each one of the PLS PCs.
+```{r}
+plot(Arslan_PLS$svd$d^2/sum(Arslan_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+    ylab = "variance explained")
+```
+Plot first PC scores against each other
+```{r}
+plot(Arslan_PLS$A1.matrix[,1], Arslan_PLS$A2.matrix[,1])
+plot(Arslan_PLS$A1.matrix[,2], Arslan_PLS$A2.matrix[,2])
+plot(Arslan_PLS$A1.matrix[,3], Arslan_PLS$A2.matrix[,3])
+plot(Arslan_PLS$A1.matrix[,4], Arslan_PLS$A2.matrix[,4])
+plot(Arslan_PLS$A1.matrix[,5], Arslan_PLS$A2.matrix[,5])
+plot(Arslan_PLS$A1.matrix[,6], Arslan_PLS$A2.matrix[,6])
+```
+####Julie
+Run the pls
+```{r}
+Julie_PLS <- two.b.pls(Julie_Morpho_Manual.gpa$coords, Julie_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(Julie_PLS)
+```
+Plot the pls
+```{r}
+plot(Julie_PLS, warpgrids = FALSE)
+```
+Variance explained by each one of the PLS PCs.
+```{r}
+plot(Julie_PLS$svd$d^2/sum(Julie_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+    ylab = "variance explained")
+```
+Plot first PC scores against each other
+```{r}
+plot(Julie_PLS$A1.matrix[,1], Julie_PLS$A2.matrix[,1])
+plot(Julie_PLS$A1.matrix[,2], Julie_PLS$A2.matrix[,2])
+plot(Julie_PLS$A1.matrix[,3], Julie_PLS$A2.matrix[,3])
+plot(Julie_PLS$A1.matrix[,4], Julie_PLS$A2.matrix[,4])
+plot(Julie_PLS$A1.matrix[,5], Julie_PLS$A2.matrix[,5])
+plot(Julie_PLS$A1.matrix[,6], Julie_PLS$A2.matrix[,6])
+```
+####Both
+Run the pls
+```{r}
+Both_PLS <- two.b.pls(Both_Morpho_Manual.gpa$coords, Both_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(Both_PLS)
+```
+Plot the pls
+```{r}
+plot(Both_PLS, warpgrids = FALSE)
+```
+Variance explained by each one of the PLS PCs.
+```{r}
+plot(Both_PLS$svd$d^2/sum(Both_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+    ylab = "variance explained")
+```
+Plot first PC scores against each other
+```{r}
+plot(Both_PLS$A1.matrix[,1], Both_PLS$A2.matrix[,1])
+plot(Both_PLS$A1.matrix[,2], Both_PLS$A2.matrix[,2])
+plot(Both_PLS$A1.matrix[,3], Both_PLS$A2.matrix[,3])
+plot(Both_PLS$A1.matrix[,4], Both_PLS$A2.matrix[,4])
+plot(Both_PLS$A1.matrix[,5], Both_PLS$A2.matrix[,5])
+plot(Both_PLS$A1.matrix[,6], Both_PLS$A2.matrix[,6])
+```
+##Centroid size comparison
+Extract centroid size from each method
+```{r}
+CentroidSizes <- as.data.frame(matrix(nrow = nrow(unique(landmarks)), ncol = 10))
+colnames(CentroidSizes) <- c("ID", "A_Manual", "A_SurfAvg", "A_Auto", "J_Manual", "J_SurfAvg", "J_Auto", "B_Manual", "B_SurfAvg", "B_Auto")
+
+CentroidSizes$ID <- unique(landmarks$ID)
+CentroidSizes$A_Manual <- Arslan_Morpho_Manual.gpa$Csize
+CentroidSizes$A_SurfAvg <- Arslan_Morpho_SurfAvg.gpa$Csize
+CentroidSizes$A_Auto <- Arslan_Morpho_Auto.gpa$Csize
+CentroidSizes$J_Manual <- Julie_Morpho_Manual.gpa$Csize
+CentroidSizes$J_SurfAvg <- Julie_Morpho_SurfAvg.gpa$Csize
+CentroidSizes$J_Auto <- Julie_Morpho_Auto.gpa$Csize
+CentroidSizes$B_Manual <- Both_Morpho_Manual.gpa$Csize
+CentroidSizes$B_SurfAvg <- Both_Morpho_SurfAvg.gpa$Csize
+CentroidSizes$B_Auto <- Both_Morpho_Auto.gpa$Csize
+
+head(CentroidSizes)
+```
+Compare centroid sizes - Arslan
+```{r}
+ggpairs(data=CentroidSizes, columns=2:4, title="Arslan Centroid Size Comparison")
+```
+Compare centroid sizes - Julie
+```{r}
+ggpairs(data=CentroidSizes, columns=5:7, title="Julie Centroid Size Comparison")
+```
+Compare centroid sizes - Both
+```{r}
+ggpairs(data=CentroidSizes, columns=8:10, title="'Both' Centroid Size Comparison")
+```
+#To Do
+MANOVA for shape with Individual, Observer and Trial as factors 
+ANOVA for centroid size by individual between methods
