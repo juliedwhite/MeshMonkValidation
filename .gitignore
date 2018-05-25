@@ -5,4 +5,5 @@ Manual_Landmarking/*
 OmidLandmarks/*
 PeterLandmarks/*
 .RData
-.Rhistoy
+.Rhistory
+.Rproj.user
