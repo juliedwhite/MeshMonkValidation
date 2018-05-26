@@ -1,0 +1,171 @@
+---
+title: "Analysis for MeshMonk Validation"
+author: "Julie D. White"
+date: "May 26, 2018"
+output: html_document
+---
+#Packages and functions
+```{r}
+library(readxl)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+```
+
+Euclidean distance function
+```{r}
+EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
+```
+
+#The dataset
+Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
+```{r}
+landmarks <- read_excel("C:/Users/Julie White/Box/MyFiles/MyResearch/RemappingValidation/PeterLandmarks/SparseLandmarkingManualAndAutomaticv20180226LOO.xlsx", sheet = "Combined")
+head(landmarks)
+```
+All the columns with "ml" are the manual landmarks placed by JW and AZ. Three iterations by two raters = six total landmark placements
+
+J_surf_avg landmarks are the result of PC averaging together JW's three iterations and then placing them on the facial surface. J_surf_avg landmarks are the result of PC averaging together AZ's three iterations and then placing them on the facial surface. B_surf_avg landmarks are the result of PC averaging together all six iterations and then placing them on the facial surface.
+
+J_loo landmarks are the result of PC using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. J_loo landmarks are the result of PC using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. B_loo landmarks are the result of PC using the B_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. 
+
+#Intra-observer error of manual landmarks
+Create dataframe for intra observer error of manual landmarks
+```{r}
+ML_Intra <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+```
+##Precision
+###Rater AZ
+Calculate the sdandard deviations across iterations for x, y, z
+```{r}
+ML_Intra$A_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3")])) 
+ML_Intra$A_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3")]))
+ML_Intra$A_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3")]))
+```
+Average of AZ's sd x, sd y, sd z across all landmarks
+```{r}
+mean(ML_Intra$A_ml_sdx)
+mean(ML_Intra$A_ml_sdy)
+mean(ML_Intra$A_ml_sdz)
+```
+Standard deviation of AZ's sd x, y, and z across all landmarks
+```{r}
+sd(ML_Intra$A_ml_sdx)
+sd(ML_Intra$A_ml_sdy)
+sd(ML_Intra$A_ml_sdz)
+```
+
+Boxplot of Arslan's sd x, y, z
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("A_ml_sdx", "A_ml_sdy", "A_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater AZ")
+```
+
+###Rater JW 
+Calculate the sdandard deviations across iterations for x, y, z
+```{r}
+ML_Intra$J_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
+ML_Intra$J_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
+ML_Intra$J_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+```
+Average of JW's sd x, y, z across all landmarks
+```{r}
+mean(ML_Intra$J_ml_sdx)
+mean(ML_Intra$J_ml_sdy)
+mean(ML_Intra$J_ml_sdz)
+```
+Standard deviation of JW's sd x, y, and z across all landmarks
+```{r}
+sd(ML_Intra$J_ml_sdx)
+sd(ML_Intra$J_ml_sdy)
+sd(ML_Intra$J_ml_sdz)
+```
+Boxplot of JW's sd x, y, z 
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("J_ml_sdx", "J_ml_sdy", "J_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater JW")
+```
+
+
+###Across all landmarks
+```{r}
+AvgPrecisionForLandmarks <- ddply(ML_Intra,~LM.Name,summarise, A_ml_sdx = mean(A_ml_sdx), A_ml_sdy = mean(A_ml_sdy), A_ml_sdz = mean(A_ml_sdy), J_ml_sdx = mean(J_ml_sdx), J_ml_sdy = mean(J_ml_sdy), J_ml_sdz = mean(J_ml_sdz), Avg_sdx = mean(c(A_ml_sdx, J_ml_sdx)), Avg_sdy=mean(c(A_ml_sdy, J_ml_sdy)), Avg_sdz=mean(c(A_ml_sdz, J_ml_sdz)))
+
+write.table(AvgPrecisionForLandmarks, "AveragePrecisionForLandmarks.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+
+AvgPrecisionForLandmarks
+```
+
+##Euclidean distance between iterations
+###Rater AZ
+Calculate pairwise distances
+```{r}
+#x1 - x2
+#x1 - x3
+#x2 - x3
+
+ML_Intra$A_ml_euclid_1to2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_ml_x2'], x['A_ml_y1'], x['A_ml_y2'], x['A_ml_z1'], x['A_ml_z2']))
+ML_Intra$A_ml_euclid_1to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x1'], x['A_ml_x3'], x['A_ml_y1'], x['A_ml_y3'], x['A_ml_z1'], x['A_ml_z3']))
+ML_Intra$A_ml_euclid_2to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_x2'], x['A_ml_x3'], x['A_ml_y2'], x['A_ml_y3'], x['A_ml_z2'], x['A_ml_z3']))
+```
+Average of euclidean distances
+```{r}
+mean(ML_Intra$A_ml_euclid_1to2)
+mean(ML_Intra$A_ml_euclid_1to3)
+mean(ML_Intra$A_ml_euclid_2to3)
+```
+Standard deviation of AZ's sd x, y, and z across all landmarks
+```{r}
+sd(ML_Intra$A_ml_euclid_1to2)
+sd(ML_Intra$A_ml_euclid_1to3)
+sd(ML_Intra$A_ml_euclid_2to3)
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right")+ylab("Euclidean distance (mm)")+xlab("Landmark")+ggtitle("Euclidean distance between landmark iterations for Rater AZ")+scale_fill_discrete(name = "Iteration", breaks=c("A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3"), labels=c("1 to 2", "1 to 3", "2 to 3"))
+```
+Combine all of these into one plot
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_euclid_1to2", "A_ml_euclid_1to3", "A_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value))+geom_boxplot(fill="#8BD7D2")+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance (mm)")+xlab("Landmark")+ggtitle("Combined euclidean distance between landmark iterations for Rater AZ")
+```
+
+###Rater JW
+Calculate pairwise distances
+```{r}
+#x1 - x2
+#x1 - x3
+#x2 - x3
+
+ML_Intra$J_ml_euclid_1to2 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_ml_x2'], x['J_ml_y1'], x['J_ml_y2'], x['J_ml_z1'], x['J_ml_z2']))
+ML_Intra$J_ml_euclid_1to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x1'], x['J_ml_x3'], x['J_ml_y1'], x['J_ml_y3'], x['J_ml_z1'], x['J_ml_z3']))
+ML_Intra$J_ml_euclid_2to3 <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_x2'], x['J_ml_x3'], x['J_ml_y2'], x['J_ml_y3'], x['J_ml_z2'], x['J_ml_z3']))
+```
+Average of euclidean distances
+```{r}
+mean(ML_Intra$J_ml_euclid_1to2)
+mean(ML_Intra$J_ml_euclid_1to3)
+mean(ML_Intra$J_ml_euclid_2to3)
+```
+Standard deviation of JW's sd x, y, and z across all landmarks
+```{r}
+sd(ML_Intra$J_ml_euclid_1to2)
+sd(ML_Intra$J_ml_euclid_1to3)
+sd(ML_Intra$J_ml_euclid_2to3)
+```
+Plot per landmark
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right")+ylab("Euclidean distance (mm)")+xlab("Landmark")+ggtitle("Euclidean distance between landmark iterations for Rater JW")+scale_fill_discrete(name = "Iteration", breaks=c("J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3"), labels=c("1 to 2", "1 to 3", "2 to 3"))
+```
+Combine all of these into one plot
+```{r}
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_euclid_1to2", "J_ml_euclid_1to3", "J_ml_euclid_2to3")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x = LM.Name, y = value))+geom_boxplot(fill="#8BD7D2")+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Euclidean distance (mm)")+xlab("Landmark")+ggtitle("Combined euclidean distance between landmark iterations for Rater JW")
+```
+
+
+
+###Across all landmarks
+```{r}
+AvgEuclideanForLandmarks <- ddply(ML_Intra,~LM.Name,summarise, A_ml_euclid_1to2 = mean(A_ml_euclid_1to2), A_ml_euclid_1to3 = mean(A_ml_euclid_1to3), A_ml_euclid_2to3 = mean(A_ml_euclid_2to3), J_ml_euclid_1to2 = mean(J_ml_euclid_1to2), J_ml_euclid_1to3 = mean(J_ml_euclid_1to3), J_ml_euclid_2to3 = mean(J_ml_euclid_2to3), Avg_1to2 = mean(c(A_ml_euclid_1to2, J_ml_euclid_1to2)), Avg_1to3=mean(c(A_ml_euclid_1to3, J_ml_euclid_1to3)), Avg_2to3=mean(c(A_ml_euclid_2to3, J_ml_euclid_2to3)))
+
+write.table(AvgEuclideanForLandmarks, "AverageEuclideanForLandmarks.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+
+AvgEuclideanForLandmarks
+```
