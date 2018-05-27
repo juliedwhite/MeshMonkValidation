@@ -12,10 +12,55 @@ library(reshape2)
 library(plyr)
 library(car)
 ```
-
 Euclidean distance function
 ```{r}
 EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
+```
+Multiple plot function
+```{r}
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
 ```
 
 #The dataset
@@ -146,68 +191,51 @@ write.table(ML_InterByLandmark, "ML_InterByLandmarks.txt", row.names = F, col.na
 ML_InterByLandmark
 ```
 
-
-#Compare manual landmarks with automatic landmarks
+#Correlation between manual and automatic landmarks
 Create the average of AZ's landmarks as well as JW's landmarks to directly compare to the automatic landmarks. 
 ```{r}
 landmarks$B_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
 landmarks$B_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "J_ml_y1", "J_ml_y2", "J_ml_y3")]))
 landmarks$B_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "J_ml_z1", "J_ml_z2", "J_ml_z3")]))
 ```
+Correlation between manual landmarks and automatic landmarks
+```{r}
+cor(landmarks$B_ml_avgx, landmarks$B_loo_x, method = "pearson")
+cor(landmarks$B_ml_avgy, landmarks$B_loo_y, method = "pearson")
+cor(landmarks$B_ml_avgz, landmarks$B_loo_z, method = "pearson")
+```
+Plot these correlations
+```{r}
+multiplot(
+  ggplot(landmarks, aes(B_ml_avgx, B_loo_x))+geom_point(size=0.5)+theme_bw()+labs(title = "X", subtitle="r = 0.9995226", x="", y="Automatic landmark coordinates"),
+  ggplot(landmarks, aes(B_ml_avgy, B_loo_y))+geom_point(size=0.5)+theme_bw()+labs(title = "Y", subtitle="r = 0.9997573", x="Manual landmark coordinates", y=NULL),
+  ggplot(landmarks, aes(B_ml_avgz, B_loo_z))+geom_point(size=0.5)+theme_bw()+labs(title = "Z", subtitle="r = 0.9999215", x="", y=NULL), cols = 3)
+```
+
+#Standard deviation between avg of manual landmarks and auto landmarks trained using average of all manual landmarks
 Create a dataframe to store the results of the comparisons
 ```{r}
 MLvsAuto <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
-##Correlation
-Correlation between manual landmarks and automatic landmarks
-```{r}
-cor(landmarks$A_ml_avgx, landmarks$A_loo_x)
-cor(landmarks$A_ml_avgy, landmarks$A_loo_y)
-cor(landmarks$A_ml_avgz, landmarks$A_loo_z)
-cor(landmarks$J_ml_avgx, landmarks$J_loo_x)
-cor(landmarks$J_ml_avgy, landmarks$J_loo_y)
-cor(landmarks$J_ml_avgz, landmarks$J_loo_z)
-cor(landmarks$B_ml_avgx, landmarks$B_loo_x)
-cor(landmarks$B_ml_avgy, landmarks$B_loo_y)
-cor(landmarks$B_ml_avgz, landmarks$B_loo_z)
-```
-##Standard deviation
 Standard deviation between the ML landmarks and the automatic landmarks.
 ```{r}
-#Observer AZ
-MLvsAuto$A_ml_loo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('A_ml_avgx', 'A_loo_x')]))
-MLvsAuto$A_ml_loo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('A_ml_avgy', 'A_loo_y')]))
-MLvsAuto$A_ml_loo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('A_ml_avgz', 'A_loo_z')]))
-#Observer JW
-MLvsAuto$J_ml_loo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('J_ml_avgx', 'J_loo_x')]))
-MLvsAuto$J_ml_loo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('J_ml_avgy', 'J_loo_y')]))
-MLvsAuto$J_ml_loo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('J_ml_avgz', 'J_loo_z')]))
-#All manual landmarks
 MLvsAuto$B_ml_loo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgx', 'B_loo_x')]))
 MLvsAuto$B_ml_loo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgy', 'B_loo_y')]))
 MLvsAuto$B_ml_loo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgz', 'B_loo_z')]))
 ```
 Average of sd x, y, z across all landmarks
 ```{r}
-mean(MLvsAuto$A_ml_loo_sdx)
-mean(MLvsAuto$A_ml_loo_sdy)
-mean(MLvsAuto$A_ml_loo_sdz)
-mean(MLvsAuto$J_ml_loo_sdx)
-mean(MLvsAuto$J_ml_loo_sdy)
-mean(MLvsAuto$J_ml_loo_sdz)
 mean(MLvsAuto$B_ml_loo_sdx)
 mean(MLvsAuto$B_ml_loo_sdy)
 mean(MLvsAuto$B_ml_loo_sdz)
 ```
 Avearge x, y, and z values together to get a per-image estimate
 ```{r}
-MLvsAuto$A_ml_loo_avg_sd <- rowMeans(subset(MLvsAuto, select=c(A_ml_loo_sdx, A_ml_loo_sdy, A_ml_loo_sdz)))
-MLvsAuto$J_ml_loo_avg_sd <- rowMeans(subset(MLvsAuto, select=c(J_ml_loo_sdx, J_ml_loo_sdy, J_ml_loo_sdz)))
 MLvsAuto$B_ml_loo_avg_sd <- rowMeans(subset(MLvsAuto, select=c(B_ml_loo_sdx, B_ml_loo_sdy, B_ml_loo_sdz)))
 ```
 Average per landmark. 
 ```{r}
-MLvsAuto_SDPerLMK <- ddply(MLvsAuto,~LM.Name,summarise, A_ml_loo_sdx = mean(A_ml_loo_sdx), A_ml_loo_sdy = mean(A_ml_loo_sdy), A_ml_loo_sdz = mean(A_ml_loo_sdz), A_ml_loo_avg_sd = mean(A_ml_loo_avg_sd), J_ml_loo_sdx = mean(J_ml_loo_sdx), J_ml_loo_sdy = mean(J_ml_loo_sdy), J_ml_loo_sdz = mean(J_ml_loo_sdz), J_ml_loo_avg_sd = mean(J_ml_loo_avg_sd), B_ml_loo_sdx = mean(B_ml_loo_sdx), B_ml_loo_sdy = mean(B_ml_loo_sdy), B_ml_loo_sdz = mean(B_ml_loo_sdz), B_ml_loo_avg_sd = mean(B_ml_loo_avg_sd))
+MLvsAuto_SDPerLMK <- ddply(.data = MLvsAuto, ~ LM.Name , summarize, B_ml_loo_sdx = mean(B_ml_loo_sdx), B_ml_loo_sdy = mean(B_ml_loo_sdy), B_ml_loo_sdz = mean(B_ml_loo_sdz), B_ml_loo_avg_sd = mean(B_ml_loo_avg_sd))
 
 write.table(MLvsAuto_SDPerLMK, "MLvsAuto_SDPerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
@@ -215,164 +243,14 @@ MLvsAuto_SDPerLMK
 ```
 Boxplot of sd x, y, z
 ```{r}
-ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name", "A_ml_loo_avg_sd", "J_ml_loo_avg_sd", "B_ml_loo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("A_ml_loo_avg_sd", "J_ml_loo_avg_sd", "B_ml_loo_avg_sd"), labels=c("Observer AZ", "Observer JW", "All manual landmarks"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Comparison of manual vs automatic landmarks")
-```
-##Euclidean distance
-Euclidean distance between the ML landmarks and automatic landmarks.
-```{r}
-MLvsAuto$A_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['A_ml_avgx'], x['A_loo_x'], x['A_ml_avgy'], x['A_loo_y'], x['A_ml_avgz'], x['A_loo_z']))
-
-MLvsAuto$J_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['J_ml_avgx'], x['J_loo_x'], x['J_ml_avgy'], x['J_loo_y'], x['J_ml_avgz'], x['J_loo_z']))
-
-MLvsAuto$B_ml_loo_euclid <- apply(landmarks[4:ncol(landmarks)], 1, function(x) EuclideanDistance(x['B_ml_avgx'], x['B_loo_x'], x['B_ml_avgy'], x['B_loo_y'], x['B_ml_avgz'], x['B_loo_z']))
-
-# Plot
-ggplot(data = melt(MLvsAuto[,c("ID", "LM.Num", "LM.Name", "A_ml_loo_euclid", "J_ml_loo_euclid", "B_ml_loo_euclid")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y = value, fill = variable))+geom_boxplot()+theme_minimal()+theme(legend.position = "right", legend.title = element_blank(), axis.text.x = element_text(angle=90, hjust=1, vjust=0)) +ylab("Euclidean Distance")+xlab("Landmark")+ggtitle("Euclidean distance between manual and automatic landmark placements")+scale_fill_discrete(breaks=c("A_ml_loo_euclid", "J_ml_loo_euclid", "B_ml_loo_euclid"), labels=c("Observer AZ", "Observer JW", "Avg of AZ and JW"))
-```
-The Li paper had a plot (Fig4 C) of the distance between manual and auto, which I'll reproduce here by only plotting the euclidean distance between the average of all manual landmarks and the automatic set trained using those landmarks.
-```{r}
-ggplot(data = landmarks, aes(x=LM.Name, y = B_ml_loo_euclid))+geom_boxplot()+theme_minimal()+theme(legend.position = "none", axis.text.x = element_text(angle=90, hjust=1, vjust=0)) + ylab("Euclidean distance")+xlab("Landmark")+ggtitle("Euclidean distance between the all manual landmarks averaged and the B_auto")
+ggplot(data = MLvsAuto, aes(x=LM.Name, y=B_ml_loo_avg_sd))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation between manual and automatic landmarks")
 ```
 
-#Inter-observer error of manual + automatic landmarks
-Use the automatic landmarks as a third observer and calculate the standard deviation between observer AZ, observer JW, and the automatic observer.
-
-In the training of the automatic indications, we used the average of observer AZ to train (A_loo), the average of observer JW to train (J_loo), and the average of all six iterations from both observers to train (B_loo). Let's see if training using six iterations (B_loo) is substantially better than training with three iterations (A_loo and J_loo). 
+#Comparison of inter-observer error calculated with manual data vs. inter-observer error calculated with automatic data
+Create dataframe to store the results
 ```{r}
 Auto_Inter <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
-
-##Compare ML landmarks to auto landmarks trained with AZ's data, JW's data and all manual landmarks
-###Trained using the average of observer AZ's landmarks (A_loo)
-Calculate the standard deviation between observer AZ's manual landmark centroid, observer JW's manual landmark centroid, and the automatic landmarks trained using AZ's manual landmark data.
-```{r}
-Auto_Inter$ML_Aloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgx", "J_ml_avgx", "A_loo_x")])) 
-Auto_Inter$ML_Aloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgy", "J_ml_avgy", "A_loo_y")]))
-Auto_Inter$ML_Aloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgz", "J_ml_avgz", "A_loo_z")]))
-```
-Mean of the standard deviation between AZ, JW, and the automatic landmarks trained using AZ's data
-```{r}
-mean(Auto_Inter$ML_Aloo_sdx)
-mean(Auto_Inter$ML_Aloo_sdy)
-mean(Auto_Inter$ML_Aloo_sdz)
-```
-Standard deviation of the standard deviations between AZ, JW, and the automatic landmarks trained using AZ's data
-```{r}
-sd(Auto_Inter$ML_Aloo_sdx)
-sd(Auto_Inter$ML_Aloo_sdy)
-sd(Auto_Inter$ML_Aloo_sdz)
-```
-Boxplot of inter-observer calculations
-```{r}
-ggplot(data = melt(Auto_Inter[, c("ID", "LM.Num", "LM.Name", "ML_Aloo_sdx", "ML_Aloo_sdy", "ML_Aloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("ML_Aloo_sdx", "ML_Aloo_sdy", "ML_Aloo_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Inter-observer error using automatic landmarks trained using AZ's data")
-```
-
-###Trained using the average of observer JW's landmarks (J_loo)
-Calculate the standard deviation between observer AZ's manual landmark centroid, observer JW's manual landmark centroid, and the automatic landmarks trained using JW's manual landmark data.
-```{r}
-Auto_Inter$ML_Jloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgx", "J_ml_avgx", "J_loo_x")])) 
-Auto_Inter$ML_Jloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgy", "J_ml_avgy", "J_loo_y")]))
-Auto_Inter$ML_Jloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgz", "J_ml_avgz", "J_loo_z")]))
-```
-Mean of the standard deviation between AZ, JW, and the automatic landmarks trained using JW's data
-```{r}
-mean(Auto_Inter$ML_Jloo_sdx)
-mean(Auto_Inter$ML_Jloo_sdy)
-mean(Auto_Inter$ML_Jloo_sdz)
-```
-Standard deviation of the standard deviations between AZ, JW, and the automatic landmarks trained using JW's data
-```{r}
-sd(Auto_Inter$ML_Jloo_sdx)
-sd(Auto_Inter$ML_Jloo_sdy)
-sd(Auto_Inter$ML_Jloo_sdz)
-```
-Boxplot of inter-observer calculations
-```{r}
-ggplot(data = melt(Auto_Inter[, c("ID", "LM.Num", "LM.Name", "ML_Jloo_sdx", "ML_Jloo_sdy", "ML_Jloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("ML_Jloo_sdx", "ML_Jloo_sdy", "ML_Jloo_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Inter-observer error using automatic landmarks trained using JW's data")
-```
-
-###Trained using the average of both observer's landmarks (B_loo)
-Calculate the standard deviation between observer AZ's manual landmark centroid, observer JW's manual landmark centroid, and the automatic landmarks trained using both observer's manual landmark data.
-```{r}
-Auto_Inter$ML_Bloo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgx", "J_ml_avgx", "B_loo_x")])) 
-Auto_Inter$ML_Bloo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgy", "J_ml_avgy", "B_loo_y")]))
-Auto_Inter$ML_Bloo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgz", "J_ml_avgz", "B_loo_z")]))
-```
-Mean of the standard deviation between AZ, JW, and the automatic landmarks trained using both observer's data
-```{r}
-mean(Auto_Inter$ML_Bloo_sdx)
-mean(Auto_Inter$ML_Bloo_sdy)
-mean(Auto_Inter$ML_Bloo_sdz)
-```
-Standard deviation of the standard deviations between AZ, JW, and the automatic landmarks trained using both observers' data
-```{r}
-sd(Auto_Inter$ML_Bloo_sdx)
-sd(Auto_Inter$ML_Bloo_sdy)
-sd(Auto_Inter$ML_Bloo_sdz)
-```
-Boxplot of inter-observer calculations
-```{r}
-ggplot(data = melt(Auto_Inter[, c("ID", "LM.Num", "LM.Name", "ML_Bloo_sdx", "ML_Bloo_sdy", "ML_Bloo_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("ML_Bloo_sdx", "ML_Bloo_sdy", "ML_Bloo_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Inter-observer error using automatic landmarks trained using both observer's data")
-```
-
-###Compare inter-observer values calculated using AZ's data, JW's data, and the average of both
-Get average per landmark across all images
-```{r}
-Auto_InterByLandmark <- ddply(Auto_Inter,~LM.Name,summarise, ML_Aloo_sdx = mean(ML_Aloo_sdx), ML_Aloo_sdy = mean(ML_Aloo_sdy), ML_Aloo_sdz = mean(ML_Aloo_sdz), ML_Aloo_avg_sd = mean(c(ML_Aloo_sdx, ML_Aloo_sdy, ML_Aloo_sdz)), ML_Jloo_sdx = mean(ML_Jloo_sdx), ML_Jloo_sdy = mean(ML_Jloo_sdy), ML_Jloo_sdz = mean(ML_Jloo_sdz), ML_Jloo_avg_sd = mean(c(ML_Jloo_sdx, ML_Jloo_sdy, ML_Jloo_sdz)), ML_Bloo_sdx = mean(ML_Bloo_sdx), ML_Bloo_sdy = mean(ML_Bloo_sdy), ML_Bloo_sdz = mean(ML_Bloo_sdz), ML_Bloo_avg_sd = mean(c(ML_Bloo_sdx, ML_Bloo_sdy, ML_Bloo_sdz)))
-
-write.table(Auto_InterByLandmark, "Auto_InterByLandmark.txt", row.names = F, col.names = T, quote = F, sep = "\t")
-
-Auto_InterByLandmark
-```
-
-Get average per image and landmarks - just averaging the x, y, and z sd values
-```{r}
-Auto_Inter$ML_Aloo_avg_sd <- rowMeans(subset(Auto_Inter, select = c(ML_Aloo_sdx, ML_Aloo_sdy, ML_Aloo_sdz)))
-Auto_Inter$ML_Jloo_avg_sd <- rowMeans(subset(Auto_Inter, select = c(ML_Jloo_sdx, ML_Jloo_sdy, ML_Jloo_sdz)))
-Auto_Inter$ML_Bloo_avg_sd <- rowMeans(subset(Auto_Inter, select = c(ML_Bloo_sdx, ML_Bloo_sdy, ML_Bloo_sdz)))
-```
-
-Graph per landmark
-```{r}
-ggplot(data = melt(Auto_Inter[,c("ID", "LM.Num", "LM.Name", "ML_Aloo_avg_sd", "ML_Jloo_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("ML_Aloo_avg_sd", "ML_Jloo_avg_sd", "ML_Bloo_avg_sd"), labels=c("Auto_AZ", "Auto_JW", "Auto_All"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Comparison of automatic landmarks training sets using inter-observer error")
-```
-Use Levene's test to determine if the above variances are different from each other.
-```{r}
-#Test if at least two groups are different
-leveneTest(value~variable, data = melt(Auto_Inter[,c("ID", "LM.Num", "LM.Name", "ML_Aloo_avg_sd", "ML_Jloo_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")))
-
-#Test if Aloo is different from Jloo
-leveneTest(value~variable, data = melt(Auto_Inter[,c("ID", "LM.Num", "LM.Name", "ML_Aloo_avg_sd", "ML_Jloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")))
-
-#Test if Aloo is different from Bloo
-leveneTest(value~variable, data = melt(Auto_Inter[,c("ID", "LM.Num", "LM.Name", "ML_Aloo_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")))
-
-#Test if Jloo is different from Bloo
-leveneTest(value~variable, data = melt(Auto_Inter[,c("ID", "LM.Num", "LM.Name", "ML_Jloo_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")))
-```
-No significant results, which means that the automatic landmarks are not vastly superior when trained by six iterations vs. three iterations
-
-##Compare inter-observer error using just manual landmarks to inter-observer error using both manual and automatic landmarks.
-Merge inter-observer error calculated using just manual landmarks with inter-observer calculated with manual and automatic landmarks
-```{r}
-Inter_MLvsAuto <- merge(ML_Inter, Auto_Inter[,c("ID","LM.Num","LM.Name","ML_Bloo_sdx","ML_Bloo_sdy","ML_Bloo_sdz")],by = c("ID", "LM.Num", "LM.Name"))
-```
-Calculate average of the manual landmark inter-observer error (across x, y, z) and average of manual + auto inter-observer error (across x, y, and z)
-```{r}
-Inter_MLvsAuto$AJ_ml_avg_sd <- rowMeans(subset(Inter_MLvsAuto, select = c(AJ_ml_sdx, AJ_ml_sdy, AJ_ml_sdz)))
-Inter_MLvsAuto$ML_Bloo_avg_sd <- rowMeans(subset(Inter_MLvsAuto, select = c(ML_Bloo_sdx, ML_Bloo_sdy, ML_Bloo_sdz)))
-```
-Graph per X, y, and z and per landmark
-```{r}
-ggplot(data = melt(Inter_MLvsAuto[, c("ID", "LM.Num", "LM.Name", "AJ_ml_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_avg_sd", "ML_Bloo_avg_sd"), labels=c("Manual landmarks", "Manual + Automatic landmarks"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Comparison of inter-observer error with and without automatic landmarks")
-```
-Levines test to see if these are different for each landmark
-```{r}
-leveneTest(value~variable, data = melt(Inter_MLvsAuto[,c("ID", "LM.Num", "LM.Name", "AJ_ml_avg_sd", "ML_Bloo_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")))
-```
-
-
-#Comparison of inter-observer error calculated with just manual data vs. inter-observer error calculated with automatic data
 Calculate standard deviation between automatic landmarks trained using AZ and JW's manual landmarks
 ```{r}
 Auto_Inter$AJ_auto_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_loo_x", "J_loo_x")]))
@@ -381,14 +259,76 @@ Auto_Inter$AJ_auto_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(
 ```
 Merge the manual landmark inter-observer error with the automatic landmark interobserver error
 ```{r}
-Inter_MLvsAuto_2 <- merge(ML_Inter, Auto_Inter[,c("ID","LM.Num","LM.Name","AJ_auto_sdx", "AJ_auto_sdy", "AJ_auto_sdz")],by = c("ID", "LM.Num", "LM.Name"))
+Inter_MLvsAuto <- merge(ML_Inter, Auto_Inter[,c("ID","LM.Num","LM.Name","AJ_auto_sdx", "AJ_auto_sdy", "AJ_auto_sdz")],by = c("ID", "LM.Num", "LM.Name"))
 ```
 Calculate average of the manual landmark inter-observer error (across x, y, z) and average of auto inter-observer error (across x, y, and z)
 ```{r}
-Inter_MLvsAuto_2$AJ_ml_avg_sd <- rowMeans(subset(Inter_MLvsAuto_2, select = c(AJ_ml_sdx, AJ_ml_sdy, AJ_ml_sdz)))
-Inter_MLvsAuto_2$AJ_auto_avg_sd <- rowMeans(subset(Inter_MLvsAuto_2, select = c(AJ_auto_sdx, AJ_auto_sdy, AJ_auto_sdz)))
+Inter_MLvsAuto$AJ_ml_avg_sd <- rowMeans(subset(Inter_MLvsAuto, select = c(AJ_ml_sdx, AJ_ml_sdy, AJ_ml_sdz)))
+Inter_MLvsAuto$AJ_auto_avg_sd <- rowMeans(subset(Inter_MLvsAuto, select = c(AJ_auto_sdx, AJ_auto_sdy, AJ_auto_sdz)))
+```
+Average per landmark. 
+```{r}
+Inter_MLvsAuto_PerLMK <- ddply(.data = Inter_MLvsAuto, ~ LM.Name , summarize, AJ_ml_sdx = mean(AJ_ml_sdx), AJ_ml_sdy = mean(AJ_ml_sdy), AJ_ml_sdz = mean(AJ_ml_sdz), AJ_ml_avg_sd = mean(AJ_ml_avg_sd), AJ_auto_sdx = mean(AJ_auto_sdx), AJ_auto_sdy = mean(AJ_auto_sdy), AJ_auto_sdz = mean(AJ_auto_sdz), AJ_auto_avg_sd = mean(AJ_auto_avg_sd))
+
+Inter_MLvsAuto_PerLMK
 ```
 Graph per X, y, and z and per landmark
 ```{r}
-ggplot(data = melt(Inter_MLvsAuto_2[, c("ID", "LM.Num", "LM.Name", "AJ_ml_avg_sd", "AJ_auto_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_avg_sd", "AJ_auto_avg_sd"), labels=c("Manual", "Automatic"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Comparison of inter-observer error calculated using manual vs. automatic landmarks")
+ggplot(data = melt(Inter_MLvsAuto[, c("ID", "LM.Num", "LM.Name", "AJ_ml_avg_sd", "AJ_auto_avg_sd")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_avg_sd", "AJ_auto_avg_sd"), labels=c("Manual", "Automatic"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Comparison of inter-observer errors\ncalculated using manual vs. automatic landmarks")
 ```
+
+See if this difference is significant using Levene's test
+Make a dataframe to store the results
+```{r}
+Inter_MLvsAuto_Levene <- as.data.frame(Inter_MLvsAuto_PerLMK[,c("LM.Name")])
+colnames(Inter_MLvsAuto_Levene) <- "LM.Name"
+Inter_MLvsAuto_Levene$X_Fvalue <- 0
+Inter_MLvsAuto_Levene$X_pvalue <- 0
+Inter_MLvsAuto_Levene$Y_Fvalue <- 0
+Inter_MLvsAuto_Levene$Y_pvalue <- 0
+Inter_MLvsAuto_Levene$Z_Fvalue <- 0
+Inter_MLvsAuto_Levene$Z_pvalue <- 0
+Inter_MLvsAuto_Levene$Mean_Fvalue <- 0
+Inter_MLvsAuto_Levene$Mean_pvalue <- 0
+```
+Calculate Levene's test for each landmark and each comparison. 
+```{r}
+#X values
+for (i in seq(1,19,1)){
+  levene_tmp <- leveneTest(value~variable, data=melt(Inter_MLvsAuto[which(Inter_MLvsAuto$LM.Name == landmarklist[i]), c("AJ_ml_sdx", "AJ_auto_sdx")]))
+  Inter_MLvsAuto_Levene[i,2] <- levene_tmp[1,2] 
+  Inter_MLvsAuto_Levene[i,3] <- levene_tmp[1,3]
+}
+
+#Y values
+for (i in seq(1,19,1)){
+  levene_tmp <- leveneTest(value~variable, data=melt(Inter_MLvsAuto[which(Inter_MLvsAuto$LM.Name == landmarklist[i]), c("AJ_ml_sdy", "AJ_auto_sdy")]))
+  Inter_MLvsAuto_Levene[i,4] <- levene_tmp[1,2] 
+  Inter_MLvsAuto_Levene[i,5] <- levene_tmp[1,3]
+}
+
+#Z values
+for (i in seq(1,19,1)){
+  levene_tmp <- leveneTest(value~variable, data=melt(Inter_MLvsAuto[which(Inter_MLvsAuto$LM.Name == landmarklist[i]), c("AJ_ml_sdz", "AJ_auto_sdz")]))
+  Inter_MLvsAuto_Levene[i,6] <- levene_tmp[1,2] 
+  Inter_MLvsAuto_Levene[i,7] <- levene_tmp[1,3]
+}
+
+#Mean values
+for (i in seq(1,19,1)){
+  levene_tmp <- leveneTest(value~variable, data=melt(Inter_MLvsAuto[which(Inter_MLvsAuto$LM.Name == landmarklist[i]), c("AJ_ml_avg_sd", "AJ_auto_avg_sd")]))
+  Inter_MLvsAuto_Levene[i,8] <- levene_tmp[1,2] 
+  Inter_MLvsAuto_Levene[i,9] <- levene_tmp[1,3]
+}
+```
+Merge with means per landmark
+```{r}
+Inter_MLvsAuto_PerLMK <- merge(Inter_MLvsAuto_PerLMK, Inter_MLvsAuto_Levene, by = "LM.Name")
+
+write.table(Inter_MLvsAuto_PerLMK, "Inter_MLvsAuto_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+
+Inter_MLvsAuto_PerLMK
+```
+
+
+
