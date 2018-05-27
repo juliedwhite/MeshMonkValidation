@@ -329,6 +329,3 @@ write.table(Inter_MLvsAuto_PerLMK, "Inter_MLvsAuto_PerLMK.txt", row.names = F, c
 
 Inter_MLvsAuto_PerLMK
 ```
-
-
-
