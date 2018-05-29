@@ -138,12 +138,12 @@ ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy
 ```{r}
 ML_IntraByLandmark <- ddply(ML_Intra,~LM.Name,summarise, A_ml_sdx = mean(A_ml_sdx), A_ml_sdy = mean(A_ml_sdy), A_ml_sdz = mean(A_ml_sdz), J_ml_sdx = mean(J_ml_sdx), J_ml_sdy = mean(J_ml_sdy), J_ml_sdz = mean(J_ml_sdz))
 
-write.table(ML_IntraByLandmark, "ML_IntraByLandmark.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(ML_IntraByLandmark, "Manuscript/Tables/ML_IntraByLandmark.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
 ML_IntraByLandmark
 ```
 
-#Inter-observer error of only manual landmarks
+#Inter-observer error of only manual landmarks (RMSE)
 ##Averaged across landmarks and images
 ```{r}
 ML_Inter <- landmarks[,c("ID", "LM.Num", "LM.Name")]
@@ -161,38 +161,35 @@ landmarks$J_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x
 landmarks$J_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
 landmarks$J_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
 ```
-Calculate the standard deviation from AZ's avg x, y, and z values and JW's x, y, and z values.
+Calculate the RMSE from AZ's avg x, y, and z values and JW's x, y, and z values.
 ```{r}
-ML_Inter$AJ_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgx", "J_ml_avgx")])) 
-ML_Inter$AJ_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgy", "J_ml_avgy")]))
-ML_Inter$AJ_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_avgz", "J_ml_avgz")]))
+ML_Inter$AJ_ml_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgx"], x["J_ml_avgx"])) 
+ML_Inter$AJ_ml_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgy"], x["J_ml_avgy"]))
+ML_Inter$AJ_ml_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgz"], x["J_ml_avgz"]))
+
+#Average
+ML_Inter$AJ_ml_avg_rmse <- rowMeans(subset(ML_Inter, select = c(AJ_ml_rmsex, AJ_ml_rmsey, AJ_ml_rmsez)))
 ```
-Average of sd x, y, z across all landmarks
+Average of RMSE x, y, z across all landmarks
 ```{r}
-mean(ML_Inter$AJ_ml_sdx)
-mean(ML_Inter$AJ_ml_sdy)
-mean(ML_Inter$AJ_ml_sdz)
+mean(ML_Inter$AJ_ml_rmsex)
+mean(ML_Inter$AJ_ml_rmsey)
+mean(ML_Inter$AJ_ml_rmsez)
 ```
-Standard devaiation of sd x, y, z across all landmarks
+Boxplot of RMSE x, y, z
 ```{r}
-sd(ML_Inter$AJ_ml_sdx)
-sd(ML_Inter$AJ_ml_sdy)
-sd(ML_Inter$AJ_ml_sdz)
-```
-Boxplot of sd x, y, z
-```{r}
-ggplot(data = melt(ML_Inter[, c("ID", "LM.Num", "LM.Name", "AJ_ml_sdx", "AJ_ml_sdy", "AJ_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_sdx", "AJ_ml_sdy", "AJ_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Inter-observer error")
+ggplot(data = melt(ML_Inter[, c("ID", "LM.Num", "LM.Name", "AJ_ml_rmsex", "AJ_ml_rmsey", "AJ_ml_rmsez")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_rmsex", "AJ_ml_rmsey", "AJ_ml_rmsez"), labels=c("X", "Y", "Z"))+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("Inter-observer error")
 ```
 One high sdx value for chelion left
 ```{r}
-ML_Inter[which(ML_Inter$AJ_ml_sdx == max(ML_Inter$AJ_ml_sdx)),]
+ML_Inter[which(ML_Inter$AJ_ml_rmsex == max(ML_Inter$AJ_ml_rmsex)),]
 ```
  
 ##Average per landmark 
 ```{r}
-ML_InterByLandmark <- ddply(ML_Inter,~LM.Name,summarise, AJ_ml_sdx = mean(AJ_ml_sdx), AJ_ml_sdy = mean(AJ_ml_sdy), AJ_ml_sdz = mean(AJ_ml_sdz))
+ML_InterByLandmark <- ddply(ML_Inter,~LM.Name,summarise, AJ_ml_rmsex = mean(AJ_ml_rmsex), AJ_ml_rmsey = mean(AJ_ml_rmsey), AJ_ml_rmsez = mean(AJ_ml_rmsez), AJ_ml_avg_rmse = mean(AJ_ml_avg_rmse)) 
 
-write.table(ML_InterByLandmark, "ML_InterByLandmarks.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(ML_InterByLandmark, "Manuscript/Tables/ML_InterByLandmarks.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
 ML_InterByLandmark
 ```
@@ -295,25 +292,36 @@ MLvsAuto <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
 Standard deviation between the ML landmarks and the automatic landmarks.
 ```{r}
+#AZ
+MLvsAuto$A_ml_loo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_x'], x['A_ml_avgx']))
+MLvsAuto$A_ml_loo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_y'], x['A_ml_avgy']))
+MLvsAuto$A_ml_loo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_z'], x['A_ml_avgz']))
+MLvsAuto$A_ml_loo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(A_ml_loo_rmsex, A_ml_loo_rmsey, A_ml_loo_rmsez)))
+
+#JW
+MLvsAuto$J_ml_loo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_x'], x['J_ml_avgx']))
+MLvsAuto$J_ml_loo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_y'], x['J_ml_avgy']))
+MLvsAuto$J_ml_loo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_z'], x['J_ml_avgz']))
+MLvsAuto$J_ml_loo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(J_ml_loo_rmsex, J_ml_loo_rmsey, J_ml_loo_rmsez)))
+
+#Both 
 MLvsAuto$B_ml_loo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['B_ml_avgx']))
 MLvsAuto$B_ml_loo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['B_ml_avgy']))
 MLvsAuto$B_ml_loo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['B_ml_avgz']))
+MLvsAuto$B_ml_loo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(B_ml_loo_rmsex, B_ml_loo_rmsey, B_ml_loo_rmsez)))
 ```
+##Results using "both" data
 Average of sd x, y, z across all landmarks
 ```{r}
 mean(MLvsAuto$B_ml_loo_rmsex)
 mean(MLvsAuto$B_ml_loo_rmsey)
 mean(MLvsAuto$B_ml_loo_rmsez)
 ```
-Avearge x, y, and z values together to get a per-image estimate
-```{r}
-MLvsAuto$B_ml_loo_avg_rmse <- rowMeans(subset(MLvsAuto, select=c(B_ml_loo_rmsex, B_ml_loo_rmsey, B_ml_loo_rmsez)))
-```
 Average per landmark. 
 ```{r}
 MLvsAuto_RMSEPerLMK <- ddply(.data = MLvsAuto, ~ LM.Name , summarize, B_ml_loo_rmsex = mean(B_ml_loo_rmsex), B_ml_loo_rmsey = mean(B_ml_loo_rmsey), B_ml_loo_rmsez = mean(B_ml_loo_rmsez), B_ml_loo_avg_rmse = mean(B_ml_loo_avg_rmse))
 
-write.table(MLvsAuto_SDPerLMK, "MLvsAuto_RMSEPerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(MLvsAuto_RMSEPerLMK, "Manuscript/Tables/MLvsAuto_RMSEPerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
 MLvsAuto_RMSEPerLMK
 ```
@@ -321,6 +329,20 @@ Boxplot of RMSE x, y, z
 ```{r}
 ggplot(data = MLvsAuto, aes(x=LM.Name, y=B_ml_loo_avg_rmse))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("RMSE between manual and automatic landmarks")
 ```
+
+##Comparison of Arslan ML - Arslan auto, Julie ML - Julie auto
+Two way comparison to make sure that the automatic landmkaring doesn't add error. I'm pretty sure we just did a similar thing to this with the Bland Altman, but let's do it in a way that can be compared 
+
+Put together the results of the manual landmarking inter-observer error and the results calculated with auto 
+```{r}
+MLvsAuto$AJ_ml_avg_rmse <- ML_Inter$AJ_ml_avg_rmse
+```
+Plot
+```{r}
+ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "AJ_ml_avg_rmse", "A_ml_loo_avg_rmse", "J_ml_loo_avg_rmse", "B_ml_loo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("AJ_ml_avg_rmse", "A_ml_loo_avg_rmse", "J_ml_loo_avg_rmse", "B_ml_loo_avg_rmse"), labels=c("RMSE between AZ and JW manual", "RMSE between AZ manual and auto", "RMSE between JW manual and auto", "RMSE between 'both' manual and auto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("Comparison of inter-observer errors\ncalculated using manual and automatic landmarks")
+```
+
+
 
 #Comparison of inter-observer error calculated with manual data vs. inter-observer error calculated with automatic data
 Create dataframe to store the results
@@ -403,7 +425,7 @@ Merge with means per landmark
 ```{r}
 Inter_MLvsAuto_PerLMK <- merge(Inter_MLvsAuto_PerLMK, Inter_MLvsAuto_Levene, by = "LM.Name")
 
-write.table(Inter_MLvsAuto_PerLMK, "Inter_MLvsAuto_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(Inter_MLvsAuto_PerLMK, "Manuscript/Tables/Inter_MLvsAuto_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
 Inter_MLvsAuto_PerLMK
 ```
