@@ -18,6 +18,10 @@ Euclidean distance function
 ```{r}
 EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
 ```
+Root mean squared error function
+```{r}
+RMSE = function(fitted, observed){sqrt(mean((fitted - observed)^2))}
+```
 Multiple plot function
 ```{r}
 # ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
@@ -284,38 +288,38 @@ ba_both_zplot <- ggplot(ba_both_z_df, aes(x=means, y=diffs))+geom_point(size = 0
 multiplot(ba_both_xplot, ba_both_yplot, ba_both_zplot, cols = 3)
 ```
 
-#Standard deviation between avg of manual landmarks and auto landmarks trained using average of all manual landmarks
+#RMSE between avg of manual landmarks and auto landmarks trained using average of all manual landmarks
 Create a dataframe to store the results of the comparisons
 ```{r}
 MLvsAuto <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
 Standard deviation between the ML landmarks and the automatic landmarks.
 ```{r}
-MLvsAuto$B_ml_loo_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgx', 'B_loo_x')]))
-MLvsAuto$B_ml_loo_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgy', 'B_loo_y')]))
-MLvsAuto$B_ml_loo_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c('B_ml_avgz', 'B_loo_z')]))
+MLvsAuto$B_ml_loo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['B_ml_avgx']))
+MLvsAuto$B_ml_loo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['B_ml_avgy']))
+MLvsAuto$B_ml_loo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['B_ml_avgz']))
 ```
 Average of sd x, y, z across all landmarks
 ```{r}
-mean(MLvsAuto$B_ml_loo_sdx)
-mean(MLvsAuto$B_ml_loo_sdy)
-mean(MLvsAuto$B_ml_loo_sdz)
+mean(MLvsAuto$B_ml_loo_rmsex)
+mean(MLvsAuto$B_ml_loo_rmsey)
+mean(MLvsAuto$B_ml_loo_rmsez)
 ```
 Avearge x, y, and z values together to get a per-image estimate
 ```{r}
-MLvsAuto$B_ml_loo_avg_sd <- rowMeans(subset(MLvsAuto, select=c(B_ml_loo_sdx, B_ml_loo_sdy, B_ml_loo_sdz)))
+MLvsAuto$B_ml_loo_avg_rmse <- rowMeans(subset(MLvsAuto, select=c(B_ml_loo_rmsex, B_ml_loo_rmsey, B_ml_loo_rmsez)))
 ```
 Average per landmark. 
 ```{r}
-MLvsAuto_SDPerLMK <- ddply(.data = MLvsAuto, ~ LM.Name , summarize, B_ml_loo_sdx = mean(B_ml_loo_sdx), B_ml_loo_sdy = mean(B_ml_loo_sdy), B_ml_loo_sdz = mean(B_ml_loo_sdz), B_ml_loo_avg_sd = mean(B_ml_loo_avg_sd))
+MLvsAuto_RMSEPerLMK <- ddply(.data = MLvsAuto, ~ LM.Name , summarize, B_ml_loo_rmsex = mean(B_ml_loo_rmsex), B_ml_loo_rmsey = mean(B_ml_loo_rmsey), B_ml_loo_rmsez = mean(B_ml_loo_rmsez), B_ml_loo_avg_rmse = mean(B_ml_loo_avg_rmse))
 
-write.table(MLvsAuto_SDPerLMK, "MLvsAuto_SDPerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+write.table(MLvsAuto_SDPerLMK, "MLvsAuto_RMSEPerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
-MLvsAuto_SDPerLMK
+MLvsAuto_RMSEPerLMK
 ```
-Boxplot of sd x, y, z
+Boxplot of RMSE x, y, z
 ```{r}
-ggplot(data = MLvsAuto, aes(x=LM.Name, y=B_ml_loo_avg_sd))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation between manual and automatic landmarks")
+ggplot(data = MLvsAuto, aes(x=LM.Name, y=B_ml_loo_avg_rmse))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "none")+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("RMSE between manual and automatic landmarks")
 ```
 
 #Comparison of inter-observer error calculated with manual data vs. inter-observer error calculated with automatic data
