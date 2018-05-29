@@ -11,6 +11,8 @@ library(ggplot2)
 library(reshape2)
 library(plyr)
 library(car)
+library(ICC)
+library(BlandAltmanLeh)
 ```
 Euclidean distance function
 ```{r}
@@ -66,7 +68,7 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 #The dataset
 Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
 ```{r}
-landmarks <- read_excel("C:/Users/Julie White/Box/MyFiles/MyResearch/RemappingValidation/PeterLandmarks/SparseLandmarkingManualAndAutomaticv20180226LOO.xlsx", sheet = "Combined")
+landmarks <- read_excel("SparseLandmarkingManualAndAutomaticv20180226LOO.xlsx", sheet = "Combined")
 head(landmarks)
 ```
 All the columns with "ml" are the manual landmarks placed by JW and AZ. Three iterations by two raters = six total landmark placements
@@ -100,7 +102,7 @@ sd(ML_Intra$A_ml_sdy)
 sd(ML_Intra$A_ml_sdz)
 ```
 
-Boxplot of Arslan's sd x, y, z
+Boxplot of AZ's sd x, y, z
 ```{r}
 ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("A_ml_sdx", "A_ml_sdy", "A_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater AZ")
 ```
@@ -128,7 +130,7 @@ Boxplot of JW's sd x, y, z
 ```{r}
 ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("J_ml_sdx", "J_ml_sdy", "J_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater JW")
 ```
-##Average per landmark
+##Average SD per landmark
 ```{r}
 ML_IntraByLandmark <- ddply(ML_Intra,~LM.Name,summarise, A_ml_sdx = mean(A_ml_sdx), A_ml_sdy = mean(A_ml_sdy), A_ml_sdz = mean(A_ml_sdz), J_ml_sdx = mean(J_ml_sdx), J_ml_sdy = mean(J_ml_sdy), J_ml_sdz = mean(J_ml_sdz))
 
@@ -198,7 +200,48 @@ landmarks$B_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x
 landmarks$B_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "J_ml_y1", "J_ml_y2", "J_ml_y3")]))
 landmarks$B_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "J_ml_z1", "J_ml_z2", "J_ml_z3")]))
 ```
-Correlation between manual landmarks and automatic landmarks
+Intraclass correlation coefficient between manual and automatic landmarks
+```{r}
+#AZ's data 
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgx", "A_loo_x")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_AZ_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgy", "A_loo_y")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_AZ_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgz", "A_loo_z")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_AZ_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+#JW's data
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgx", "J_loo_x")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_JW_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgy", "J_loo_y")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_JW_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgz", "J_loo_z")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_JW_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+#Both
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgx", "B_loo_x")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Both_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgy", "B_loo_y")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Both_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgz", "B_loo_z")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Both_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+```
+Pearson's correlation between manual landmarks and automatic landmarks
 ```{r}
 cor(landmarks$B_ml_avgx, landmarks$B_loo_x, method = "pearson")
 cor(landmarks$B_ml_avgy, landmarks$B_loo_y, method = "pearson")
@@ -207,9 +250,38 @@ cor(landmarks$B_ml_avgz, landmarks$B_loo_z, method = "pearson")
 Plot these correlations
 ```{r}
 multiplot(
-  ggplot(landmarks, aes(B_ml_avgx, B_loo_x))+geom_point(size=0.5)+theme_bw()+labs(title = "X", subtitle="r = 0.9995226", x="", y="Automatic landmark coordinates"),
-  ggplot(landmarks, aes(B_ml_avgy, B_loo_y))+geom_point(size=0.5)+theme_bw()+labs(title = "Y", subtitle="r = 0.9997573", x="Manual landmark coordinates", y=NULL),
-  ggplot(landmarks, aes(B_ml_avgz, B_loo_z))+geom_point(size=0.5)+theme_bw()+labs(title = "Z", subtitle="r = 0.9999215", x="", y=NULL), cols = 3)
+  ggplot(landmarks, aes(B_ml_avgx, B_loo_x))+geom_point(size=0.5)+theme_bw()+labs(title = "X", subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Automatic landmark coordinates"),
+  ggplot(landmarks, aes(B_ml_avgy, B_loo_y))+geom_point(size=0.5)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Manual landmark coordinates", y=NULL),
+  ggplot(landmarks, aes(B_ml_avgz, B_loo_z))+geom_point(size=0.5)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y=NULL), cols = 3)
+```
+
+Bland Altman Plot
+```{r}
+#X
+ba_both_x <- bland.altman.stats(landmarks$B_ml_avgx, landmarks$B_auto_x)
+ba_both_x_df <- as.data.frame(matrix(NA, nrow = 779))
+ba_both_x_df$means <- ba_both_x$means
+ba_both_x_df$diffs <- ba_both_x$diffs
+
+ba_both_xplot <- ggplot(ba_both_x_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "X",subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Differences (mm)")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+
+#Y
+ba_both_y <- bland.altman.stats(landmarks$B_ml_avgy, landmarks$B_auto_y)
+ba_both_y_df <- as.data.frame(matrix(NA, nrow = 779))
+ba_both_y_df$means <- ba_both_y$means
+ba_both_y_df$diffs <- ba_both_y$diffs
+
+ba_both_yplot <- ggplot(ba_both_y_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Means (mm)", y="")+geom_hline(yintercept = ba_both_y$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_y$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+
+#Z
+ba_both_z <- bland.altman.stats(landmarks$B_ml_avgz, landmarks$B_auto_z)
+ba_both_z_df <- as.data.frame(matrix(NA, nrow = 779))
+ba_both_z_df$means <- ba_both_z$means
+ba_both_z_df$diffs <- ba_both_z$diffs
+
+ba_both_zplot <- ggplot(ba_both_z_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y="")+geom_hline(yintercept = ba_both_z$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_z$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+
+multiplot(ba_both_xplot, ba_both_yplot, ba_both_zplot, cols = 3)
 ```
 
 #Standard deviation between avg of manual landmarks and auto landmarks trained using average of all manual landmarks
@@ -293,6 +365,8 @@ Inter_MLvsAuto_Levene$Mean_pvalue <- 0
 ```
 Calculate Levene's test for each landmark and each comparison. 
 ```{r}
+landmarklist <- as.character(unique(Inter_MLvsAuto_Levene$LM.Name))
+
 #X values
 for (i in seq(1,19,1)){
   levene_tmp <- leveneTest(value~variable, data=melt(Inter_MLvsAuto[which(Inter_MLvsAuto$LM.Name == landmarklist[i]), c("AJ_ml_sdx", "AJ_auto_sdx")]))
