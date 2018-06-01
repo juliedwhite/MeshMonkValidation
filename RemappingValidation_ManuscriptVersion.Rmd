@@ -766,15 +766,19 @@ head(as.data.frame(Both_MorphoData_Auto))
 ```{r}
 AJ_MorphoData_Manual <- rbind(AZ_MorphoData_Manual_1, AZ_MorphoData_Manual_2, AZ_MorphoData_Manual_3, JW_MorphoData_Manual_1, JW_MorphoData_Manual_2, JW_MorphoData_Manual_3)
 ```
+Because there is one camera with an n=1 sample size, we are going to remove that person prior to the analysis
+```{r}
+AJ_MorphoData_Manual <- AJ_MorphoData_Manual[!rownames(AJ_MorphoData_Manual) %like% "131213",]
+```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
 AJ_Manual_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_Manual), ncol=6))
 colnames(AJ_Manual_Groups) <- c("ID", "StudyID", "Camera", "Observer", "Method", "Iteration")
 AJ_Manual_Groups$ID <- rownames(AJ_MorphoData_Manual)
-AJ_Manual_Groups$StudyID <- c(rep(unique(landmarks$ID)))
-AJ_Manual_Groups$Iteration <- rep(c(rep("1", each=41), rep("2", each=41), rep("3", each=41)))
-AJ_Manual_Groups$Camera <- rep(c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26)))
-AJ_Manual_Groups$Observer <- c(rep("AZ", each=123), rep("JW", each=123))
+AJ_Manual_Groups$StudyID <- rep(id_subset)
+AJ_Manual_Groups$Iteration <- rep(c(rep("1", each=40), rep("2", each=40), rep("3", each=40)))
+AJ_Manual_Groups$Camera <- rep(c(rep("2005 3dMD 2-pod", each=14), rep("2014 3dMD 3-pod", each = 26)))
+AJ_Manual_Groups$Observer <- c(rep("AZ", each=120), rep("JW", each=120))
 AJ_Manual_Groups$Method <- rep("ML")
 ```
 ###GPA align manual landmark iterations from both AZ and JW
@@ -792,7 +796,7 @@ No outliers
 #Make geomorph dataframe 
 AJ_Manual_GDF <- geomorph.data.frame(shape = AJ_Morpho_Manual.gpa$coords, individual = AJ_Manual_Groups$StudyID, observer = AJ_Manual_Groups$Observer, iteration = AJ_Manual_Groups$Iteration, camera = AJ_Manual_Groups$Camera)
 
-AJ_Morpho_Manual.manova <- procD.lm(shape ~ individual + observer + iteration + individual*observer + camera + individual*camera, data = AJ_Manual_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
+AJ_Morpho_Manual.manova <- procD.lm(shape ~ individual*camera + observer/iteration, data = AJ_Manual_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
 summary(AJ_Morpho_Manual.manova)
 ```
 ```{r}
@@ -804,14 +808,18 @@ Combine manual and automatic data together
 ```{r}
 Both_MorphoData_MLvsAuto <- rbind(Both_MorphoData_Manual, Both_MorphoData_Auto)
 ```
+Because there is one camera with an n=1 sample size, we are going to remove that person prior to the analysis
+```{r}
+Both_MorphoData_MLvsAuto <- Both_MorphoData_MLvsAuto[!rownames(Both_MorphoData_MLvsAuto) %like% "131213",]
+```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
 Both_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(Both_MorphoData_MLvsAuto), ncol=4))
 colnames(Both_MLvsAuto_Groups) <- c("ID", "StudyID", "Camera","Method")
 Both_MLvsAuto_Groups$ID <- rownames(Both_MorphoData_MLvsAuto)
-Both_MLvsAuto_Groups$StudyID <- c(rep(unique(landmarks$ID)))
-Both_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26))
-Both_MLvsAuto_Groups$Method <- c(rep("ML", each=41), rep("Auto", each=41))
+Both_MLvsAuto_Groups$StudyID <- rep(id_subset)
+Both_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), rep("2014 3dMD 3-pod", each = 26))
+Both_MLvsAuto_Groups$Method <- c(rep("ML", each=40), rep("Auto", each=40))
 ```
 GPA align manual and automatic landmark iterations. 
 ```{r}
@@ -826,7 +834,7 @@ Make geomorph dataframe and run manova
 ```{r}
 Both_MLvsAuto_GDF <- geomorph.data.frame(shape = Both_Morpho_MLvsAuto.gpa$coords, individual = Both_MLvsAuto_Groups$StudyID, camera = Both_MLvsAuto_Groups$Camera, method = Both_MLvsAuto_Groups$Method)
 
-Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual + method + camera + individual*camera, data = Both_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
+Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual*camera + method, data = Both_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
 summary(Both_Morpho_MLvsAuto.manova)
 ```
 ```{r}
@@ -837,15 +845,19 @@ plot(Both_Morpho_MLvsAuto.manova, type = "diagnostics", outliers = TRUE)
 ```{r}
 AJ_MorphoData_MLvsAuto <- rbind(AZ_MorphoData_Manual_avg, JW_MorphoData_Manual_avg, AZ_MorphoData_Auto, JW_MorphoData_Auto)
 ```
+Because there is one camera with an n=1 sample size, we are going to remove that person prior to the analysis
+```{r}
+AJ_MorphoData_MLvsAuto <- AJ_MorphoData_MLvsAuto[!rownames(AJ_MorphoData_MLvsAuto) %like% "131213",]
+```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
 AJ_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_MLvsAuto), ncol=5))
 colnames(AJ_MLvsAuto_Groups) <- c("ID", "StudyID", "Camera", "Method", "Observer")
 AJ_MLvsAuto_Groups$ID <- rownames(AJ_MorphoData_MLvsAuto)
-AJ_MLvsAuto_Groups$StudyID <- c(rep(unique(landmarks$ID)))
-AJ_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26))
-AJ_MLvsAuto_Groups$Method <- c(rep("ML", each=82), rep("Auto", each=82))
-AJ_MLvsAuto_Groups$Observer <- c(rep("AZ", each=41), rep("JW", each=41))
+AJ_MLvsAuto_Groups$StudyID <- rep(id_subset)
+AJ_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), rep("2014 3dMD 3-pod", each = 26))
+AJ_MLvsAuto_Groups$Method <- c(rep("ML", each=80), rep("Auto", each=80))
+AJ_MLvsAuto_Groups$Observer <- c(rep("AZ", each=40), rep("JW", each=40))
 ```
 GPA align manual and automatic landmark iterations
 ```{r}
@@ -860,7 +872,7 @@ Make geomorph dataframe
 ```{r}
 AJ_MLvsAuto_GDF <- geomorph.data.frame(shape = AJ_Morpho_MLvsAuto.gpa$coords, individual = AJ_MLvsAuto_Groups$StudyID, camera = AJ_MLvsAuto_Groups$Camera, method = AJ_MLvsAuto_Groups$Method, observer=AJ_MLvsAuto_Groups$Observer)
 
-AJ_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual + method + camera + observer + individual*observer + individual*camera, data = AJ_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
+AJ_Morpho_MLvsAuto.manova <- procD.lm(shape ~  individual*camera*observer + method, data = AJ_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
 summary(AJ_Morpho_MLvsAuto.manova)
 ```
 ```{r}
@@ -1019,9 +1031,14 @@ CentroidSizes$J_Manual <- JW_Morpho_Manual.gpa$Csize
 CentroidSizes$J_Auto <- JW_Morpho_Auto.gpa$Csize
 CentroidSizes$B_Manual <- Both_Morpho_Manual.gpa$Csize
 CentroidSizes$B_Auto <- Both_Morpho_Auto.gpa$Csize
+```
+Because there is one camera with an n=1 sample size, we are going to remove that person prior to the analysis
+```{r}
+CentroidSizes <- CentroidSizes[CentroidSizes$ID != "131213",]
 
 CentroidSizes
 ```
+
 Compare centroid sizes
 ```{r}
 ggpairs(data=CentroidSizes, columns=c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), title="Centroid Size Comparison")
@@ -1030,21 +1047,21 @@ ggpairs(data=CentroidSizes, columns=c("A_Manual", "A_Auto", "J_Manual", "J_Auto"
 ###Bland-Altman for centroid sizes
 ```{r}
 ba_centroid_A <- bland.altman.stats(CentroidSizes$A_Auto, CentroidSizes$A_Manual)
-ba_centroid_Adf <- as.data.frame(matrix(NA, nrow = 779))
+ba_centroid_Adf <- as.data.frame(matrix(NA, nrow = 40))
 ba_centroid_Adf$means <- ba_centroid_A$means
 ba_centroid_Adf$diffs <- ba_centroid_A$diffs
 
 ba_centroid_Aplot <- ggplot(ba_centroid_Adf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "AZ", x="", y="Differences (mm)")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 ba_centroid_J <- bland.altman.stats(CentroidSizes$J_Auto, CentroidSizes$J_Manual)
-ba_centroid_Jdf <- as.data.frame(matrix(NA, nrow = 779))
+ba_centroid_Jdf <- as.data.frame(matrix(NA, nrow = 40))
 ba_centroid_Jdf$means <- ba_centroid_J$means
 ba_centroid_Jdf$diffs <- ba_centroid_J$diffs
 
 ba_centroid_Jplot <- ggplot(ba_centroid_Jdf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "JW", x="Means (mm)", y="")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 ba_centroid_B <- bland.altman.stats(CentroidSizes$B_Auto, CentroidSizes$B_Manual)
-ba_centroid_Bdf <- as.data.frame(matrix(NA, nrow = 779))
+ba_centroid_Bdf <- as.data.frame(matrix(NA, nrow = 40))
 ba_centroid_Bdf$means <- ba_centroid_B$means
 ba_centroid_Bdf$diffs <- ba_centroid_B$diffs
 
