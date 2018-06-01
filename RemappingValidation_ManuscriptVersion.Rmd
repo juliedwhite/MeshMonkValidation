@@ -681,19 +681,7 @@ rm(i)
 Both_MorphoData_Manual <- as.matrix(Both_MorphoData_Manual)
 head(as.data.frame(Both_MorphoData_Manual))
 ```
-Make groups dataframe that has sample information
-```{r}
-BothManualGroups <- as.data.frame(matrix(nrow=nrow(Both_MorphoData_Manual), ncol=6))
-colnames(BothManualGroups) <- c("ID", "StudyID", "Camera", "Observer", "Method", "Iteration")
-BothManualGroups$ID <- rownames(Both_MorphoData_Manual)
-for (i in 1:nrow(Both_MorphoData_Manual)){
-  BothManualGroups[i,2] <- strsplit(rownames(Both_MorphoData_Manual), split = "_")[[i]][1]
-  BothManualGroups[i,6] <- strsplit(rownames(Both_MorphoData_Manual), split = "_")[[i]][4]
-}
-BothManualGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
-BothManualGroups$Observer <- rep("Both")
-BothManualGroups$Method <- rep("ML")
-```
+
 ##Convert the automatic landmarks into morpho format
 ###AZ Auto
 Make empty dataframe to store landmarks
@@ -721,19 +709,6 @@ rm(i)
 AZ_MorphoData_Auto <- as.matrix(AZ_MorphoData_Auto)
 head(as.data.frame(AZ_MorphoData_Auto))
 ```
-Make groups dataframe that has sample information for all of AZ auto data 
-```{r}
-AZAutoGroups <- as.data.frame(matrix(nrow=nrow(AZ_MorphoData_Auto), ncol=6))
-colnames(AZAutoGroups) <- c("ID", "StudyID", "Camera", "Observer", "Method", "Iteration")
-AZAutoGroups$ID <- rownames(AZ_MorphoData_Auto)
-for (i in 1:nrow(AZ_MorphoData_Auto)){
-  AZAutoGroups[i,2] <- strsplit(rownames(AZ_MorphoData_Auto), split = "_")[[i]][1]
-  AZAutoGroups[i,6] <- strsplit(rownames(AZ_MorphoData_Auto), split = "_")[[i]][4]
-}
-AZAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
-AZAutoGroups$Observer <- rep("AZ")
-AZAutoGroups$Method <- rep("Auto")
-```
 ###JW Auto
 Make empty dataframe to store landmarks
 ```{r}
@@ -759,19 +734,6 @@ rm(i)
 
 JW_MorphoData_Auto <- as.matrix(JW_MorphoData_Auto)
 head(as.data.frame(JW_MorphoData_Auto))
-```
-Make groups dataframe that has sample information for all of JW auto data 
-```{r}
-JWAutoGroups <- as.data.frame(matrix(nrow=nrow(JW_MorphoData_Auto), ncol=6))
-colnames(JWAutoGroups) <- c("ID", "StudyID", "Camera", "Observer", "Method", "Iteration")
-JWAutoGroups$ID <- rownames(JW_MorphoData_Auto)
-for (i in 1:nrow(JW_MorphoData_Auto)){
-  JWAutoGroups[i,2] <- strsplit(rownames(JW_MorphoData_Auto), split = "_")[[i]][1]
-  JWAutoGroups[i,6] <- strsplit(rownames(JW_MorphoData_Auto), split = "_")[[i]][4]
-}
-JWAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
-JWAutoGroups$Observer <- rep("JW")
-JWAutoGroups$Method <- rep("Auto")
 ```
 ###Both auto
 Make empty dataframe to store landmarks
@@ -799,20 +761,6 @@ rm(i)
 Both_MorphoData_Auto <- as.matrix(Both_MorphoData_Auto)
 head(as.data.frame(Both_MorphoData_Auto))
 ```
-Make groups dataframe that has sample information for all of Both auto data 
-```{r}
-BothAutoGroups <- as.data.frame(matrix(nrow=nrow(Both_MorphoData_Auto), ncol=6))
-colnames(BothAutoGroups) <- c("ID", "StudyID", "Camera", "Observer", "Method", "Iteration")
-BothAutoGroups$ID <- rownames(Both_MorphoData_Auto)
-for (i in 1:nrow(Both_MorphoData_Auto)){
-  BothAutoGroups[i,2] <- strsplit(rownames(Both_MorphoData_Auto), split = "_")[[i]][1]
-  BothAutoGroups[i,6] <- strsplit(rownames(Both_MorphoData_Auto), split = "_")[[i]][4]
-}
-BothAutoGroups$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
-BothAutoGroups$Observer <- rep("Both")
-BothAutoGroups$Method <- rep("Auto")
-```
-
 ##Manova of manual landmarks only
 ###Combine manual landmark iteration data together
 ```{r}
@@ -825,7 +773,7 @@ colnames(AJ_Manual_Groups) <- c("ID", "StudyID", "Camera", "Observer", "Method",
 AJ_Manual_Groups$ID <- rownames(AJ_MorphoData_Manual)
 AJ_Manual_Groups$StudyID <- c(rep(unique(landmarks$ID)))
 AJ_Manual_Groups$Iteration <- rep(c(rep("1", each=41), rep("2", each=41), rep("3", each=41)))
-AJ_Manual_Groups$Camera <- rep(c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26)))
+AJ_Manual_Groups$Camera <- rep(c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26)))
 AJ_Manual_Groups$Observer <- c(rep("AZ", each=123), rep("JW", each=123))
 AJ_Manual_Groups$Method <- rep("ML")
 ```
@@ -851,8 +799,8 @@ summary(AJ_Morpho_Manual.manova)
 plot(AJ_Morpho_Manual.manova, type = "diagnostics", outliers = TRUE)
 ```
 
-##Manova of manual vs automatic landmarks, using just "Both" data
-###Combine manual and automatic data together
+##Compare manual vs automatic using manova on "Both" data, with individual, observer, camera, and method as covariates. 
+Combine manual and automatic data together
 ```{r}
 Both_MorphoData_MLvsAuto <- rbind(Both_MorphoData_Manual, Both_MorphoData_Auto)
 ```
@@ -862,10 +810,10 @@ Both_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(Both_MorphoData_MLvsAuto)
 colnames(Both_MLvsAuto_Groups) <- c("ID", "StudyID", "Camera","Method")
 Both_MLvsAuto_Groups$ID <- rownames(Both_MorphoData_MLvsAuto)
 Both_MLvsAuto_Groups$StudyID <- c(rep(unique(landmarks$ID)))
-Both_MLvsAuto_Groups$Camera <- rep(c(rep("GHPAFF 2pod", each=14), "UIUC 3 pod", rep("ADAPT 3pod", each = 26)))
+Both_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26))
 Both_MLvsAuto_Groups$Method <- c(rep("ML", each=41), rep("Auto", each=41))
 ```
-###GPA align manual and automatic landmark iterations
+GPA align manual and automatic landmark iterations. 
 ```{r}
 Both_Morpho_MLvsAuto <- arrayspecs(A=Both_MorphoData_MLvsAuto, p = 19, k = 3)
 Both_Morpho_MLvsAuto.gpa <- gpagen(A=Both_Morpho_MLvsAuto, print.progress = FALSE)
@@ -874,9 +822,8 @@ Plot outliers
 ```{r}
 plotOutliers(Both_Morpho_MLvsAuto.gpa$coords)
 ```
-###Perform manova with study individual, camera, and method as covariates
+Make geomorph dataframe and run manova
 ```{r}
-#Make geomorph dataframe 
 Both_MLvsAuto_GDF <- geomorph.data.frame(shape = Both_Morpho_MLvsAuto.gpa$coords, individual = Both_MLvsAuto_Groups$StudyID, camera = Both_MLvsAuto_Groups$Camera, method = Both_MLvsAuto_Groups$Method)
 
 Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual + method + camera + individual*camera, data = Both_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
@@ -886,10 +833,64 @@ summary(Both_Morpho_MLvsAuto.manova)
 plot(Both_Morpho_MLvsAuto.manova, type = "diagnostics", outliers = TRUE)
 ```
 
+##Compare manual vs automatic using manova on AZ / JW trained data with study individual, observer, camera, and method as covariates
+```{r}
+AJ_MorphoData_MLvsAuto <- rbind(AZ_MorphoData_Manual_avg, JW_MorphoData_Manual_avg, AZ_MorphoData_Auto, JW_MorphoData_Auto)
+```
+Groups dataframe that has sample information for combined manual landmarking data 
+```{r}
+AJ_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_MLvsAuto), ncol=5))
+colnames(AJ_MLvsAuto_Groups) <- c("ID", "StudyID", "Camera", "Method", "Observer")
+AJ_MLvsAuto_Groups$ID <- rownames(AJ_MorphoData_MLvsAuto)
+AJ_MLvsAuto_Groups$StudyID <- c(rep(unique(landmarks$ID)))
+AJ_MLvsAuto_Groups$Camera <- c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26))
+AJ_MLvsAuto_Groups$Method <- c(rep("ML", each=82), rep("Auto", each=82))
+AJ_MLvsAuto_Groups$Observer <- c(rep("AZ", each=41), rep("JW", each=41))
+```
+GPA align manual and automatic landmark iterations
+```{r}
+AJ_Morpho_MLvsAuto <- arrayspecs(A=AJ_MorphoData_MLvsAuto, p = 19, k = 3)
+AJ_Morpho_MLvsAuto.gpa <- gpagen(A=AJ_Morpho_MLvsAuto, print.progress = FALSE)
+```
+Plot outliers
+```{r}
+plotOutliers(AJ_Morpho_MLvsAuto.gpa$coords)
+```
+Make geomorph dataframe 
+```{r}
+AJ_MLvsAuto_GDF <- geomorph.data.frame(shape = AJ_Morpho_MLvsAuto.gpa$coords, individual = AJ_MLvsAuto_Groups$StudyID, camera = AJ_MLvsAuto_Groups$Camera, method = AJ_MLvsAuto_Groups$Method, observer=AJ_MLvsAuto_Groups$Observer)
+
+AJ_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual + method + camera + observer + individual*observer + individual*camera, data = AJ_MLvsAuto_GDF, iter = 999, RRPP=TRUE, print.progress=FALSE)
+summary(AJ_Morpho_MLvsAuto.manova)
+```
+```{r}
+plot(AJ_Morpho_MLvsAuto.manova, type = "diagnostics", outliers = TRUE)
+```
 
 ##Two-block partial least squares
 Two-block partial least squares to assess the degree of association between two blocks of Prorustes-aligned coordinates. 
-###Arslan
+###AZ manual and automatic data
+GPA align manual and automatic landmark iterations separately
+```{r}
+#Manual
+AZ_Morpho_Manual <- arrayspecs(A=AZ_MorphoData_Manual_avg, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(AZ_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+AZ_Morpho_Manual.gpa <- gpagen(A=AZ_Morpho_Manual, print.progress = FALSE)
+#Automatic
+AZ_Morpho_Auto <- arrayspecs(A=AZ_MorphoData_Auto, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(AZ_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+AZ_Morpho_Auto.gpa <- gpagen(A=AZ_Morpho_Auto, print.progress = FALSE)
+```
+Plot outliers in manual data
+```{r}
+plotOutliers(AZ_Morpho_Manual.gpa$coords)
+```
+Plot outliers in automatic data
+```{r}
+plotOutliers(AZ_Morpho_Auto.gpa$coords)
+```
 Run the pls
 ```{r}
 AZ_PLS <- two.b.pls(AZ_Morpho_Manual.gpa$coords, AZ_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
@@ -914,6 +915,27 @@ plot(AZ_PLS$A1.matrix[,5], AZ_PLS$A2.matrix[,5])
 plot(AZ_PLS$A1.matrix[,6], AZ_PLS$A2.matrix[,6])
 ```
 ###Julie
+GPA align manual and automatic landmark iterations separately
+```{r}
+#Manual
+JW_Morpho_Manual <- arrayspecs(A=JW_MorphoData_Manual_avg, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(JW_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+JW_Morpho_Manual.gpa <- gpagen(A=JW_Morpho_Manual, print.progress = FALSE)
+#Automatic
+JW_Morpho_Auto <- arrayspecs(A=JW_MorphoData_Auto, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(JW_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+JW_Morpho_Auto.gpa <- gpagen(A=JW_Morpho_Auto, print.progress = FALSE)
+```
+Plot outliers in manual data
+```{r}
+plotOutliers(JW_Morpho_Manual.gpa$coords)
+```
+Plot outliers in auto data
+```{r}
+plotOutliers(JW_Morpho_Auto.gpa$coords)
+```
 Run the pls
 ```{r}
 JW_PLS <- two.b.pls(JW_Morpho_Manual.gpa$coords, JW_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
@@ -938,6 +960,27 @@ plot(JW_PLS$A1.matrix[,5], JW_PLS$A2.matrix[,5])
 plot(JW_PLS$A1.matrix[,6], JW_PLS$A2.matrix[,6])
 ```
 ###Both
+GPA align manual and automatic landmark iterations separately
+```{r}
+#Manual
+Both_Morpho_Manual <- arrayspecs(A=Both_MorphoData_Manual, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(Both_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+Both_Morpho_Manual.gpa <- gpagen(A=Both_Morpho_Manual, print.progress = FALSE)
+#Automatic
+Both_Morpho_Auto <- arrayspecs(A=Both_MorphoData_Auto, p = 19, k = 3)
+#Need to change the names to be matching for the PLS
+dimnames(Both_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+Both_Morpho_Auto.gpa <- gpagen(A=Both_Morpho_Auto, print.progress = FALSE)
+```
+Plot outliers in manual data
+```{r}
+plotOutliers(Both_Morpho_Manual.gpa$coords)
+```
+Plot outliers in automatic data
+```{r}
+plotOutliers(Both_Morpho_Auto.gpa$coords)
+```
 Run the pls
 ```{r}
 Both_PLS <- two.b.pls(Both_Morpho_Manual.gpa$coords, Both_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
@@ -969,7 +1012,7 @@ CentroidSizes <- as.data.frame(matrix(nrow = length(unique(landmarks$ID)), ncol 
 colnames(CentroidSizes) <- c("ID", "Camera", "A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto")
 
 CentroidSizes$ID <- unique(landmarks$ID)
-CentroidSizes$Camera <- c(rep("GHPAFF 2pod", each=14), "UIUC 2pod", rep("ADAPT 3pod", each = 26))
+CentroidSizes$Camera <- c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 2-pod", rep("2014 3dMD 3-pod", each = 26))
 CentroidSizes$A_Manual <- AZ_Morpho_Manual.gpa$Csize
 CentroidSizes$A_Auto <- AZ_Morpho_Auto.gpa$Csize
 CentroidSizes$J_Manual <- JW_Morpho_Manual.gpa$Csize
@@ -1012,18 +1055,11 @@ multiplot(ba_centroid_Aplot, ba_centroid_Jplot, ba_centroid_Bplot, cols = 3)
 
 ###Histogram of centroid sizes 
 ```{r}
-ggplot(data=melt(CentroidSizes, id.vars = "ID"), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(title="Comparison of centroid sizes", x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), labels = c("AZ manual", "AZ auto", "JW manual", "JW auto", "Both manual", "Both auto"))
+ggplot(data=melt(CentroidSizes, id.vars = c("ID", "Camera")), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(title="Comparison of centroid sizes", x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), labels = c("AZ manual", "AZ auto", "JW manual", "JW auto", "Both manual", "Both auto"))
 ```
 
 ###Anova of centroid sizes
 ```{r}
 CentroidSize_AOV <- aov(value ~ variable + ID + Camera, data = melt(CentroidSizes, id.vars = c("ID", "Camera")))
 summary(CentroidSize_AOV)
-```
-
-
-
-Plot all specimens
-```{r}
-plotAllSpecimens(Both_Morpho_Auto.gpa$coords, mean = TRUE, label = TRUE, plot.param = list(pt.cex=0.1, mean.bg = "red", mean.cex = 3))
 ```
