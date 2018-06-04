@@ -6,94 +6,112 @@ output: html_notebook
 
 #Error measures on linear distances
 ```{r}
-DistancesToCalculate <- read.table("C:\\Users\\Julie White\\Box Sync\\MHC_paper\\MHC_analysis\\Manual_Landmarking\\LinearDistancesToCalculate.txt", sep = "\t", header = F, colClasses="character")
+LandmarkCombinations <- t(combn(x=unique(landmarks$LM.Name), m=2))
 ```
-
+Euclidean distance function
 ```{r}
-ArslanLinearDistances <- matrix(NA, nrow = length(unique(JulieManualLandmarks$IID)), ncol = 3*length(DistancesToCalculate$V4))
-
-rownames(ArslanLinearDistances) <- as.character(unique(JulieManualLandmarks$IID))
-
-colnames(ArslanLinearDistances) <- c(paste(DistancesToCalculate$V4, "_1", sep = ""), paste(DistancesToCalculate$V4,"_2",sep=""), paste(DistancesToCalculate$V4,"_3",sep=""))
+EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
 ```
-
+Make matrix to store Arslan's data
 ```{r}
+ArslanLinearDistances <- matrix(NA, nrow = 3*length(unique(landmarks$ID)), ncol = 4+nrow(LandmarkCombinations))
 
+rownames(ArslanLinearDistances) <- c(paste0(unique(landmarks$ID), "_AZ_1"), paste0(unique(landmarks$ID), "_AZ_2"), paste0(unique(landmarks$ID), "_AZ_3"))
 
-for (i in 1:ncol(ArslanLinearDistances)){ #Iterations x Pairwise distances
-    if (i <= 84){
-        for (j in 1:nrow(ArslanLinearDistances)){ #People
-            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i,2]),] 
-            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i,3]),]
-            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_1, Landmark2$x_1, Landmark1$y_1, Landmark2$y_1, Landmark1$z_1, Landmark2$z_1) 
-        }
-    } else if (i > 84 & i <= 168){
-        for (j in 1:nrow(ArslanLinearDistances)){ #People
-            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,2]),] 
-            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,3]),]
-            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_2, Landmark2$x_2, Landmark1$y_2, Landmark2$y_2, Landmark1$z_2, Landmark2$z_2)
-        }
-    } else if (i > 168 & i <= 252){
-        for (j in 1:nrow(ArslanLinearDistances)){ #People
-            Landmark1 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,2]),] 
-            Landmark2 <- ArslanManualLandmarks[(ArslanManualLandmarks$IID == rownames(ArslanLinearDistances)[j]) & (ArslanManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,3]),]
-            ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_3, Landmark2$x_3, Landmark1$y_3, Landmark2$y_3, Landmark1$z_3, Landmark2$z_3) 
-        }
-    } else {
-        print("Something wrong")
+colnames(ArslanLinearDistances) <- c("StudyID", "Camera", "Observer", "Iteration", paste0(LandmarkCombinations[,1], "-", LandmarkCombinations[,2]))
+```
+Fill in first three columns 
+```{r}
+ArslanLinearDistances[,1] <- rep(unique(landmarks$ID))
+ArslanLinearDistances[,2] <- rep(c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 3-pod", rep("2014 3dMD 3-pod", each = 26)))
+ArslanLinearDistances[,3] <- rep("AZ")
+ArslanLinearDistances[,4] <- c(rep("1", each=41), rep("2", each=41), rep("3", each=41))
+```
+Calculate distances
+```{r}
+for (i in 5:ncol(ArslanLinearDistances)){ #Each pairwise distance
+  for (j in 1:nrow(ArslanLinearDistances)){ #Each person
+    if (j <= 41){
+      Landmark1 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$A_ml_x1, Landmark2$A_ml_x1, Landmark1$A_ml_y1, Landmark2$A_ml_y1, Landmark1$A_ml_z1, Landmark2$A_ml_z1)
+    } else if (j>41 & j <= 82){
+      Landmark1 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$A_ml_x2, Landmark2$A_ml_x2, Landmark1$A_ml_y2, Landmark2$A_ml_y2, Landmark1$A_ml_z2, Landmark2$A_ml_z2)
+    } else if (j > 82){
+      Landmark1 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == ArslanLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      ArslanLinearDistances[j,i] <- EuclideanDistance(Landmark1$A_ml_x3, Landmark2$A_ml_x3, Landmark1$A_ml_y3, Landmark2$A_ml_y3, Landmark1$A_ml_z3, Landmark2$A_ml_z3)
     }
+  }
 }
 ```
-
+Make matrix to store Julie's data
 ```{r}
-rownames(ArslanLinearDistances) <- paste(rownames(ArslanLinearDistances), "_AZ", sep="")
+JulieLinearDistances <- matrix(NA, nrow = 3*length(unique(landmarks$ID)), ncol = 4+nrow(LandmarkCombinations))
+
+rownames(JulieLinearDistances) <- c(paste0(unique(landmarks$ID), "_JW_1"), paste0(unique(landmarks$ID), "_JW_2"), paste0(unique(landmarks$ID), "_JW_3"))
+
+colnames(JulieLinearDistances) <- c("StudyID", "Camera", "Observer", "Iteration", paste0(LandmarkCombinations[,1], "-", LandmarkCombinations[,2]))
 ```
-
+Fill in first three columns 
 ```{r}
-JulieLinearDistances <- matrix(NA, nrow = length(unique(JulieManualLandmarks$IID)), ncol = 3*length(DistancesToCalculate$V4))
-
-rownames(JulieLinearDistances) <- as.character(unique(JulieManualLandmarks$IID))
-
-colnames(JulieLinearDistances) <- c(paste(DistancesToCalculate$V4, "_1", sep = ""), paste(DistancesToCalculate$V4,"_2",sep=""), paste(DistancesToCalculate$V4,"_3",sep=""))
+JulieLinearDistances[,1] <- rep(unique(landmarks$ID))
+JulieLinearDistances[,2] <- rep(c(rep("2005 3dMD 2-pod", each=14), "2014 3dMD 3-pod", rep("2014 3dMD 3-pod", each = 26)))
+JulieLinearDistances[,3] <- rep("JW")
+JulieLinearDistances[,4] <- c(rep("1", each=41), rep("2", each=41), rep("3", each=41))
 ```
-
+Calculate distances
 ```{r}
-for (i in 1:ncol(JulieLinearDistances)){ #Iterations x Pairwise distances
-    if (i <= 84){
-        for (j in 1:nrow(JulieLinearDistances)){ #People
-            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i,2]),] 
-            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i,3]),]
-            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_1, Landmark2$x_1, Landmark1$y_1, Landmark2$y_1, Landmark1$z_1, Landmark2$z_1) 
-        }
-    } else if (i > 84 & i <= 168){
-        for (j in 1:nrow(JulieLinearDistances)){ #People
-            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,2]),] 
-            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-84,3]),]
-            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_2, Landmark2$x_2, Landmark1$y_2, Landmark2$y_2, Landmark1$z_2, Landmark2$z_2)
-        }
-    } else if (i > 168 & i <= 252){
-        for (j in 1:nrow(JulieLinearDistances)){ #People
-            Landmark1 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,2]),] 
-            Landmark2 <- JulieManualLandmarks[(JulieManualLandmarks$IID == rownames(JulieLinearDistances)[j]) & (JulieManualLandmarks$Landmark.Name == DistancesToCalculate[i-168,3]),]
-            JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$x_3, Landmark2$x_3, Landmark1$y_3, Landmark2$y_3, Landmark1$z_3, Landmark2$z_3) 
-        }
-    } else {
-        print("Something wrong")
+for (i in 5:ncol(JulieLinearDistances)){ #Each pairwise distance
+  for (j in 1:nrow(JulieLinearDistances)){ #Each person
+    if (j <= 41){
+      Landmark1 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$J_ml_x1, Landmark2$J_ml_x1, Landmark1$J_ml_y1, Landmark2$J_ml_y1, Landmark1$J_ml_z1, Landmark2$J_ml_z1)
+    } else if (j>41 & j <= 82){
+      Landmark1 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$J_ml_x2, Landmark2$J_ml_x2, Landmark1$J_ml_y2, Landmark2$J_ml_y2, Landmark1$J_ml_z2, Landmark2$J_ml_z2)
+    } else if (j > 82){
+      Landmark1 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,1]),]
+      Landmark2 <- landmarks[(landmarks$ID == JulieLinearDistances[j,1]) & (landmarks$LM.Name == LandmarkCombinations[i-4,2]),]
+      JulieLinearDistances[j,i] <- EuclideanDistance(Landmark1$J_ml_x3, Landmark2$J_ml_x3, Landmark1$J_ml_y3, Landmark2$J_ml_y3, Landmark1$J_ml_z3, Landmark2$J_ml_z3)
     }
+  }
 }
-
-rm(Landmark1, Landmark2, i, j)
 ```
-
+Bind Arslan and Julie data
 ```{r}
-rownames(JulieLinearDistances) <- paste(rownames(JulieLinearDistances), "_JW", sep="")
-
-ArslanJulieLinearDistances <- rbind(ArslanLinearDistances, JulieLinearDistances)
-
-rm(ArslanLinearDistances, JulieLinearDistances)
-
+ArslanJulieLinearDistances <- as.data.frame(rbind(ArslanLinearDistances, JulieLinearDistances))
+colid <- 5:ncol(ArslanJulieLinearDistances)
+ArslanJulieLinearDistances[colid] <- as.numeric(as.character(unlist(ArslanJulieLinearDistances[colid])))
 head(as.data.frame(ArslanJulieLinearDistances))
 ```
+Manova?
+```{r}
+AJ_LinearDistances_PCA <- prcomp(ArslanJulieLinearDistances[5:ncol(ArslanJulieLinearDistances)], center = T, scale. = T)
+
+#summary(AJ_LinearDistances_PCA)
+#PC31 captures 99% of the variation 
+
+AJ_LinearDistances_PCA_1to31 <- as.data.frame(AJ_LinearDistances_PCA$x[,1:31])
+AJ_LinearDistances_PCA_1to31 <- cbind(ArslanJulieLinearDistances[2], AJ_LinearDistances_PCA_1to31) 
+```
+
+```{r}
+AJ_LinearDistances_PCA_1to31_Camera.manova <- manova(as.matrix(AJ_LinearDistances_PCA_1to31[2:ncol(AJ_LinearDistances_PCA_1to31)])~Camera, data = AJ_LinearDistances_PCA_1to31)
+summary(AJ_LinearDistances_PCA_1to31_Camera.manova)
+```
+Store residuals
+```{r}
+cam_removed <- cbind(ArslanJulieLinearDistances[c(1,3,4)], AJ_LinearDistances_PCA_1to31_Camera.manova$residuals)
+new.manova <- manova(as.matrix(cam_removed[4:ncol(cam_removed)])~StudyID + Observer/Iteration, data = cam_removed)
+summary(new.manova)
+```
+
+#Old stuff 
 
 ```{r}
 SDofSideReplicates <- as.data.frame(matrix(nrow=100, ncol=84))
