@@ -15,6 +15,7 @@ library(ICC)
 library(BlandAltmanLeh)
 library(geomorph)
 library(GGally)
+library(data.table)
 library(dplyr)
 library(broom)
 library(ggpubr)
@@ -834,16 +835,59 @@ plotOutliers(AJ_Morpho_Manual.gpa$coords)
 ```
 No outliers
 ###Perform manova with observer, trial, and camera as covariates
+####Regressing out individuals first: 
 ```{r}
 #Make geomorph dataframe 
 AJ_Manual_GDF <- geomorph.data.frame(shape = AJ_Morpho_Manual.gpa$coords, individual = as.character(AJ_Manual_Groups$StudyID), observer = AJ_Manual_Groups$Observer, iteration = AJ_Manual_Groups$Iteration, camera = AJ_Manual_Groups$Camera)
 
-AJ_Morpho_Manual.manova <- procD.lm(f1 = shape ~ individual+observer+iteration+iteration*camera, data = AJ_Manual_GDF, RRPP=TRUE, iter = 999, print.progress=FALSE)
+AJ_Morpho_Manual.manova <- procD.lm(f1 = shape ~ individual+observer/iteration+observer*individual, data = AJ_Manual_GDF, RRPP=TRUE, iter = 999, print.progress=FALSE)
 summary(AJ_Morpho_Manual.manova)
 ```
 
 ```{r}
-plot(AJ_Morpho_Manual.manova, type = "diagnostics", outliers = TRUE)
+AJ_Morpho_Residuals <- as.data.frame(AJ_Morpho_Manual.manova$residuals)
+```
+
+```{r}
+residual.pca <- prcomp(AJ_Morpho_Residuals, center = TRUE, scale = TRUE)
+summary(residual.pca)
+```
+
+```{r}
+AJ_Morpho_Residuals_PC1to40 <- as.data.frame(residual.pca$x[,1:40])
+AJ_Morpho_Residuals_PC1to40$Camera <- AJ_Manual_Groups$Camera
+```
+
+```{r}
+residual.manova <- manova(as.matrix(AJ_Morpho_Residuals_PC1to40[,1:40])~Camera, data = AJ_Morpho_Residuals_PC1to40)
+summary(residual.manova)
+```
+####Regressing out camera first 
+```{r}
+AJ_Morpho_Manual.manova <- procD.lm(f1 = shape ~ camera, data = AJ_Manual_GDF, RRPP=TRUE, iter = 999, print.progress=FALSE)
+summary(AJ_Morpho_Manual.manova)
+```
+
+```{r}
+AJ_Morpho_Residuals <- as.data.frame(AJ_Morpho_Manual.manova$residuals)
+```
+
+```{r}
+residual.pca <- prcomp(AJ_Morpho_Residuals, center = TRUE, scale = TRUE)
+summary(residual.pca)
+```
+
+```{r}
+AJ_Morpho_Residuals_PC1to40 <- as.data.frame(residual.pca$x[,1:40])
+AJ_Morpho_Residuals_PC1to40$Individual <- as.character(AJ_Manual_Groups$StudyID)
+AJ_Morpho_Residuals_PC1to40$Observer <- AJ_Manual_Groups$Observer
+AJ_Morpho_Residuals_PC1to40$Iteration <- AJ_Manual_Groups$Iteration
+```
+
+```{r}
+residual.manova <- manova(as.matrix(AJ_Morpho_Residuals_PC1to40[,1:40])~Individual+Observer/Iteration+Observer*Individual, data = AJ_Morpho_Residuals_PC1to40)
+summary(residual.manova)
+```
 ```
 ##Manova of average manual landmarks with individual, camera, and observer as covariates
 ```{r}
@@ -1293,6 +1337,6 @@ CentroidSize_Melt$ID <- as.character(CentroidSize_Melt$ID)
 CentroidSize_Melt$Observer <- c(rep("AZ", each=80), rep("JW", each=80), rep("Both", each=80))
 CentroidSize_Melt$Method <- c(rep("ML", each=40), rep("Auto", each=40), rep("Manual", each=40), rep("Auto", each=40), rep("Manual", each=40), rep("Auto", each=40))
 
-CentroidSize_AOV <- aov(value ~ ID + Observer + Method + Observer*Camera, data = CentroidSize_Melt)
+CentroidSize_AOV <- aov(value ~ ID + Observer + Method + Camera, data = CentroidSize_Melt)
 summary(CentroidSize_AOV)
 ```
