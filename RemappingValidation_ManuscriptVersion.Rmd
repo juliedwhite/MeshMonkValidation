@@ -862,7 +862,7 @@ plotAllSpecimens(AJ_Morpho_ManualAvg.gpa$coords)
 ```{r}
 AJ_ManualAvg_GDF <- geomorph.data.frame(shape = AJ_Morpho_ManualAvg.gpa$coords, individual = AJ_ManualAvg_Groups$StudyID, observer = AJ_ManualAvg_Groups$Observer)
 
-AJ_Morpho_ManualAvg.manova <- procD.lm(shape~individual+observer, data = AJ_ManualAvg_GDF, print.progress = FALSE)
+AJ_Morpho_ManualAvg.manova <- procD.lm(shape~observer+individual, data = AJ_ManualAvg_GDF, print.progress = FALSE)
 summary(AJ_Morpho_ManualAvg.manova)
 ```
 ```{r}
@@ -895,7 +895,7 @@ Make geomorph dataframe and run manova
 ```{r}
 AJ_Auto_GDF <- geomorph.data.frame(shape = AJ_Morpho_Auto.gpa$coords, individual = AJ_Auto_Groups$StudyID, observer=AJ_Auto_Groups$Observer)
 
-AJ_Morpho_Auto.manova <- procD.lm(shape~individual+observer, data = AJ_Auto_GDF, print.progress=FALSE)
+AJ_Morpho_Auto.manova <- procD.lm(shape~observer+individual, data = AJ_Auto_GDF, print.progress=FALSE)
 summary(AJ_Morpho_Auto.manova)
 ```
 ```{r}
@@ -928,7 +928,7 @@ Make geomorph dataframe and run manova
 ```{r}
 Both_MLvsAuto_GDF <- geomorph.data.frame(shape = Both_Morpho_MLvsAuto.gpa$coords, individual = Both_MLvsAuto_Groups$StudyID,  method = Both_MLvsAuto_Groups$Method)
 
-Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ individual+method, data = Both_MLvsAuto_GDF, print.progress=FALSE)
+Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ method+individual, data = Both_MLvsAuto_GDF, print.progress=FALSE)
 summary(Both_Morpho_MLvsAuto.manova)
 ```
 ```{r}
