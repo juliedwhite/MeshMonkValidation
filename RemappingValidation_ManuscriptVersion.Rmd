@@ -270,7 +270,7 @@ ba_both_x_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 
 ba_both_x_df$means <- ba_both_x$means
 ba_both_x_df$diffs <- ba_both_x$diffs
 
-ba_both_xplot <- ggplot(ba_both_x_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "X",subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Differences (mm)")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_both_xplot <- ggplot(ba_both_x_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "X",subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Differences (mm)")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 #Y
 ba_both_y <- bland.altman.stats(landmarks$B_ml_avgy, landmarks$B_loo_y)
@@ -278,7 +278,7 @@ ba_both_y_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 
 ba_both_y_df$means <- ba_both_y$means
 ba_both_y_df$diffs <- ba_both_y$diffs
 
-ba_both_yplot <- ggplot(ba_both_y_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Means (mm)", y="")+geom_hline(yintercept = ba_both_y$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_y$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_both_yplot <- ggplot(ba_both_y_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Means (mm)", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_y$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_y$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 #Z
 ba_both_z <- bland.altman.stats(landmarks$B_ml_avgz, landmarks$B_loo_z)
@@ -286,9 +286,9 @@ ba_both_z_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 
 ba_both_z_df$means <- ba_both_z$means
 ba_both_z_df$diffs <- ba_both_z$diffs
 
-ba_both_zplot <- ggplot(ba_both_z_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y="")+geom_hline(yintercept = ba_both_z$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_z$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_both_zplot <- ggplot(ba_both_z_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_z$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_z$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
-multiplot(ba_both_xplot, ba_both_yplot, ba_both_zplot, cols = 3)
+ggarrange(ba_both_xplot, ba_both_yplot, ba_both_zplot, ncol = 3)
 ```
 
 #Comparison of inter-observer error calculated with manual data vs. inter-observer error calculated with automatic data
@@ -352,25 +352,68 @@ MLvsAuto$Bml_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RM
 MLvsAuto$Bml_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_y'], x['B_ml_avgy']))
 MLvsAuto$Bml_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_z'], x['B_ml_avgz']))
 MLvsAuto$Bml_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Bml_Jloo_rmsex, Bml_Jloo_rmsey, Bml_Jloo_rmsez)))
-```
-Write table for manuscript 
-```{r}
-MLvsAuto_RMSE_ByLandmark <- ddply(MLvsAuto,~LM.Name,summarise, Bml_Bloo_rmsex = mean(Bml_Bloo_rmsex), Bml_Bloo_rmsey = mean(Bml_Bloo_rmsey), Bml_Bloo_rmsez = mean(Bml_Bloo_rmsez), Bml_Bloo_avg_rmse = mean(Bml_Bloo_avg_rmse)) 
 
-write.table(MLvsAuto_RMSE_ByLandmark, "Manuscript/Tables/MLvsAuto_Both_RMSE_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
-```
+#Between AZ auto and JW auto 
+MLvsAuto$Aloo_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_x"], x["J_loo_x"]))
+MLvsAuto$Aloo_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_y"], x["J_loo_y"]))
+MLvsAuto$Aloo_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_z"], x["J_loo_z"]))
+MLvsAuto$Aloo_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aloo_Jloo_rmsex, Aloo_Jloo_rmsey, Aloo_Jloo_rmsez)))
 
-##Plotting all comparisons
-Two way comparison to make sure that the automatic landmkaring doesn't add error. I'm pretty sure we just did a similar thing to this with the Bland Altman, but let's do it in a way that can be compared.
-
-Put together the results of the manual landmarking inter-observer error and the results calculated with auto 
-```{r}
+#Put together the results of the manual landmarking inter-observer error and the results calculated with auto 
 MLvsAuto$Aml_Jml_avg_rmse <- ML_Inter$Aml_Jml_avg_rmse
 MLvsAuto$Aml_Jml_rmsex <- ML_Inter$Aml_Jml_rmsex
 MLvsAuto$Aml_Jml_rmsey <- ML_Inter$Aml_Jml_rmsey
 MLvsAuto$Aml_Jml_rmsez <- ML_Inter$Aml_Jml_rmsez
 ```
+Write table for manuscript 
+```{r}
+MLvsAuto_RMSE_ByLandmark <- ddply(MLvsAuto,~LM.Name,summarise, 
+                                  Aml_Aloo_rmsex = mean(Aml_Aloo_rmsex), 
+                                  Aml_Aloo_rmsey = mean(Aml_Aloo_rmsey), 
+                                  Aml_Aloo_rmsez = mean(Aml_Aloo_rmsez), 
+                                  Aml_Aloo_avg_rmse = mean(Aml_Aloo_avg_rmse), 
+                                  Aml_Jloo_rmsex = mean(Aml_Jloo_rmsex),
+                                  Aml_Jloo_rmsey = mean(Aml_Jloo_rmsey),
+                                  Aml_Jloo_rmsez = mean(Aml_Jloo_rmsez),
+                                  Aml_Jloo_avg_rmse = mean(Aml_Jloo_avg_rmse),
+                                  Aml_Bloo_rmsex = mean(Aml_Bloo_rmsex),
+                                  Aml_Bloo_rmsey = mean(Aml_Bloo_rmsey),
+                                  Aml_Bloo_rmsez = mean(Aml_Bloo_rmsez),
+                                  Aml_Bloo_avg_rmse = mean(Aml_Bloo_avg_rmse),
+                                  Jml_Jloo_rmsex = mean(Jml_Jloo_rmsex), 
+                                  Jml_Jloo_rmsey = mean(Jml_Jloo_rmsey), 
+                                  Jml_Jloo_rmsez = mean(Jml_Jloo_rmsez), 
+                                  Jml_Jloo_avg_rmse = mean(Jml_Jloo_avg_rmse), 
+                                  Jml_Aloo_rmsex = mean(Jml_Aloo_rmsex),
+                                  Jml_Aloo_rmsey = mean(Jml_Aloo_rmsey),
+                                  Jml_Aloo_rmsez = mean(Jml_Aloo_rmsez),
+                                  Jml_Aloo_avg_rmse = mean(Jml_Aloo_avg_rmse),
+                                  Jml_Bloo_rmsex = mean(Jml_Bloo_rmsex),
+                                  Jml_Bloo_rmsey = mean(Jml_Bloo_rmsey),
+                                  Jml_Bloo_rmsez = mean(Jml_Bloo_rmsez),
+                                  Jml_Bloo_avg_rmse = mean(Jml_Bloo_avg_rmse),
+                                  Bml_Bloo_rmsex = mean(Bml_Bloo_rmsex), 
+                                  Bml_Bloo_rmsey = mean(Bml_Bloo_rmsey), 
+                                  Bml_Bloo_rmsez = mean(Bml_Bloo_rmsez), 
+                                  Bml_Bloo_avg_rmse = mean(Bml_Bloo_avg_rmse),
+                                  Bml_Aloo_rmsex = mean(Bml_Aloo_rmsex), 
+                                  Bml_Aloo_rmsey = mean(Bml_Aloo_rmsey), 
+                                  Bml_Aloo_rmsez = mean(Bml_Aloo_rmsez), 
+                                  Bml_Aloo_avg_rmse = mean(Bml_Aloo_avg_rmse),
+                                  Bml_Jloo_rmsex = mean(Bml_Jloo_rmsex), 
+                                  Bml_Jloo_rmsey = mean(Bml_Jloo_rmsey), 
+                                  Bml_Jloo_rmsez = mean(Bml_Jloo_rmsez), 
+                                  Bml_Jloo_avg_rmse = mean(Bml_Jloo_avg_rmse),
+                                  Aml_Jml_rmsex = mean(Aml_Jml_rmsex),
+                                  Aml_Jml_rmsey = mean(Aml_Jml_rmsey),
+                                  Aml_Jml_rmsez = mean(Aml_Jml_rmsez),
+                                  Aml_Jml_avg_rmse = mean(Aml_Jml_avg_rmse)) 
 
+write.table(MLvsAuto_RMSE_ByLandmark, "Manuscript/Tables/MLvsAuto_All_RMSE_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+```
+
+##Plotting all comparisons
+Two way comparison to make sure that the automatic landmkaring doesn't add error. I'm pretty sure we just did a similar thing to this with the Bland Altman, but let's do it in a way that can be compared.
 Plot
 ```{r}
 ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Jloo_avg_rmse","Jml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Jloo_avg_rmse", "Jml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse"), labels=c("Aml - Jml", "Aml - Aauto", "Aml - Jauto", "Jml - Jauto", "Jml - Aauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
@@ -422,17 +465,10 @@ AmlVsJml_AlooVsJml_RMSE.Ttest
 write.table(AmlVsJml_AlooVsJml_RMSE.Ttest, "Manuscript/Tables/AmlVsJml_AautoVsJml_RMSE.Ttest.txt", row.names = F, col.names = T, sep = "\t", quote = F)
 ```
 
-
 Compare: 
 Aml - Jml 
 Aauto - Jauto
-Calculate RMSE between automatic landmarks trained using AZ and JW's manual landmarks
-```{r}
-MLvsAuto$Aloo_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_x"], x["J_loo_x"]))
-MLvsAuto$Aloo_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_y"], x["J_loo_y"]))
-MLvsAuto$Aloo_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_z"], x["J_loo_z"]))
-MLvsAuto$Aloo_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aloo_Jloo_rmsex, Aloo_Jloo_rmsey, Aloo_Jloo_rmsez)))
-```
+
 Graph
 ```{r}
 ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aloo_Jloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aloo_Jloo_avg_rmse"), labels=c("Aml - Jml", "Aauto - Jauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
@@ -447,25 +483,6 @@ ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", 
 ```
 
 ##Levene's test for equal variance (used because the data do not follow a normal distribution)
-Average per landmark. 
-```{r}
-MLvsAuto_PerLMK <- ddply(.data = MLvsAuto, ~ LM.Name , summarize, 
-                         Aml_Aloo_avg_rmse = mean(Aml_Aloo_avg_rmse), 
-                         Aml_Jloo_avg_rmse = mean(Aml_Jloo_avg_rmse), 
-                         Aml_Bloo_avg_rmse = mean(Aml_Bloo_avg_rmse), 
-                         Jml_Aloo_avg_rmse = mean(Jml_Aloo_avg_rmse), 
-                         Jml_Jloo_avg_rmse = mean(Jml_Jloo_avg_rmse), 
-                         Jml_Bloo_avg_rmse = mean(Jml_Bloo_avg_rmse),
-                         Bml_Aloo_avg_rmse = mean(Bml_Aloo_avg_rmse), 
-                         Bml_Jloo_avg_rmse = mean(Bml_Jloo_avg_rmse), 
-                         Bml_Bloo_avg_rmse = mean(Bml_Bloo_avg_rmse),
-                         Aml_Jml_avg_rmse = mean(Aml_Jml_avg_rmse), 
-                         Aloo_Jloo_avg_rmse = mean(Aloo_Jloo_avg_rmse))
-```
-Write this table for manuscript
-```{r}
-write.table(MLvsAuto_PerLMK, "Manuscript/Tables/MLvsAuto_All_RMSE_PerLMK.txt", row.names = F, col.names = T, sep = "\t")
-```
 
 See if the variances of these comparisons are equal using Levene's test
 Create an array to store the results
