@@ -20,129 +20,78 @@ library(dplyr)
 library(broom)
 library(ggpubr)
 ```
-Euclidean distance function
-```{r}
-EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
-```
 Root mean squared error function
 ```{r}
 RMSE = function(fitted, observed){sqrt(mean((fitted - observed)^2))}
 ```
-Multiple plot function
-```{r}
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-```
-
 #The dataset
 Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
 ```{r}
 landmarks <- read_excel("SparseLandmarkingManualAndAutomaticv20180226LOO.xlsx", sheet = "Combined")
 head(landmarks)
 ```
-All the columns with "ml" are the manual landmarks placed by JW and AZ. Three iterations by two raters = six total landmark placements
+All the columns with "ml" are the manual landmarks placed by observer A and B. Three iterations by two raters = six total landmark placements
 
-J_surf_avg landmarks are the result of PC averaging together JW's three iterations and then placing them on the facial surface. J_surf_avg landmarks are the result of PC averaging together AZ's three iterations and then placing them on the facial surface. B_surf_avg landmarks are the result of PC averaging together all six iterations and then placing them on the facial surface.
+A_surf_avg landmarks are the result of PC averaging together observer A's three iterations and then placing them on the facial surface. B_surf_avg landmarks are the result of PC averaging together observer B's three iterations and then placing them on the facial surface. C_surf_avg landmarks are the result of PC averaging together all six iterations and then placing them on the facial surface.
 
-J_loo landmarks are the result of PC using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. J_loo landmarks are the result of PC using the J_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. B_loo landmarks are the result of PC using the B_surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, but for each face he leaves out their landmarks in the training. 
+_loo landmarks are the result of PC using the surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, done 41 times, but each face's landmarks are left out ititeratively in the training. 
 
 #Intra-observer error of only manual landmarks
 Create dataframe for intra observer error of manual landmarks
 ```{r}
 ML_Intra <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
-##Observer AZ
+##Observer A
 Calculate the sdandard deviations across iterations for x, y, z
 ```{r}
 ML_Intra$A_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3")])) 
 ML_Intra$A_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3")]))
 ML_Intra$A_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3")]))
 ```
-Average of AZ's sd x, sd y, sd z across all landmarks
+Average of A's sd x, sd y, sd z across all landmarks
 ```{r}
 mean(ML_Intra$A_ml_sdx)
 mean(ML_Intra$A_ml_sdy)
 mean(ML_Intra$A_ml_sdz)
 ```
-Standard deviation of AZ's sd x, y, and z across all landmarks
+Standard deviation of A's sd x, y, and z across all landmarks
 ```{r}
 sd(ML_Intra$A_ml_sdx)
 sd(ML_Intra$A_ml_sdy)
 sd(ML_Intra$A_ml_sdz)
 ```
 
-Boxplot of AZ's sd x, y, z
+Boxplot of A's sd x, y, z
 ```{r}
-ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("A_ml_sdx", "A_ml_sdy", "A_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater AZ")
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "A_ml_sdx", "A_ml_sdy", "A_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("A_ml_sdx", "A_ml_sdy", "A_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for observer A")
 ```
 
-##Rater JW 
+##Rater B
 Calculate the sdandard deviations across iterations for x, y, z
 ```{r}
-ML_Intra$J_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
-ML_Intra$J_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
-ML_Intra$J_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+ML_Intra$B_ml_sdx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_x1", "B_ml_x2", "B_ml_x3")])) 
+ML_Intra$B_ml_sdy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_y1", "B_ml_y2", "B_ml_y3")]))
+ML_Intra$B_ml_sdz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) sd(x[c("B_ml_z1", "B_ml_z2", "B_ml_z3")]))
 ```
-Average of JW's sd x, y, z across all landmarks
+Average of observer B's sd x, y, z across all landmarks
 ```{r}
-mean(ML_Intra$J_ml_sdx)
-mean(ML_Intra$J_ml_sdy)
-mean(ML_Intra$J_ml_sdz)
+mean(ML_Intra$B_ml_sdx)
+mean(ML_Intra$B_ml_sdy)
+mean(ML_Intra$B_ml_sdz)
 ```
-Standard deviation of JW's sd x, y, and z across all landmarks
+Standard deviation of observer B's sd x, y, and z across all landmarks
 ```{r}
-sd(ML_Intra$J_ml_sdx)
-sd(ML_Intra$J_ml_sdy)
-sd(ML_Intra$J_ml_sdz)
+sd(ML_Intra$B_ml_sdx)
+sd(ML_Intra$B_ml_sdy)
+sd(ML_Intra$B_ml_sdz)
 ```
-Boxplot of JW's sd x, y, z 
+Boxplot of observer B's sd x, y, z 
 ```{r}
-ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "J_ml_sdx", "J_ml_sdy", "J_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("J_ml_sdx", "J_ml_sdy", "J_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for Rater JW")
+ggplot(data = melt(ML_Intra[, c("ID", "LM.Num", "LM.Name", "B_ml_sdx", "B_ml_sdy", "B_ml_sdz")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("B_ml_sdx", "B_ml_sdy", "B_ml_sdz"), labels=c("X", "Y", "Z"))+ylab("Standard Deviation (mm)")+xlab("Landmark")+ggtitle("Standard deviation of x, y, and z coordinates for observer B")
 ```
 ##Average SD per landmark
 ```{r}
-ML_IntraByLandmark <- ddply(ML_Intra,~LM.Name,summarise, A_ml_sdx = mean(A_ml_sdx), A_ml_sdy = mean(A_ml_sdy), A_ml_sdz = mean(A_ml_sdz), J_ml_sdx = mean(J_ml_sdx), J_ml_sdy = mean(J_ml_sdy), J_ml_sdz = mean(J_ml_sdz))
+ML_IntraByLandmark <- ddply(ML_Intra,~LM.Name,summarise, A_ml_sdx = mean(A_ml_sdx), A_ml_sdy = mean(A_ml_sdy), A_ml_sdz = mean(A_ml_sdz), B_ml_sdx = mean(B_ml_sdx), B_ml_sdy = mean(B_ml_sdy), B_ml_sdz = mean(B_ml_sdz))
 
 write.table(ML_IntraByLandmark, "Manuscript/Tables/ML_IntraByLandmark.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
@@ -155,45 +104,45 @@ ML_IntraByLandmark
 ML_Inter <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
 This calculation will be performed on the average of each rater's landmarks, since the intra-observer error was low.
-Average of AZ's x y and z 
+Average of A's x y and z 
 ```{r}
 landmarks$A_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3")])) 
 landmarks$A_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3")]))
 landmarks$A_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3")]))
 ```
-Avearge of JW's x y and z 
+Avearge of B's x y and z 
 ```{r}
-landmarks$J_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
-landmarks$J_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_y1", "J_ml_y2", "J_ml_y3")]))
-landmarks$J_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+landmarks$B_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_x1", "B_ml_x2", "B_ml_x3")])) 
+landmarks$B_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_y1", "B_ml_y2", "B_ml_y3")]))
+landmarks$B_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("B_ml_z1", "B_ml_z2", "B_ml_z3")]))
 ```
-Calculate the RMSE from AZ's avg x, y, and z values and JW's x, y, and z values.
+Calculate the RMSE from A's avg x, y, and z values and B's x, y, and z values.
 ```{r}
-ML_Inter$Aml_Jml_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgx"], x["J_ml_avgx"])) 
-ML_Inter$Aml_Jml_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgy"], x["J_ml_avgy"]))
-ML_Inter$Aml_Jml_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgz"], x["J_ml_avgz"]))
+ML_Inter$Aml_Bml_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgx"], x["B_ml_avgx"])) 
+ML_Inter$Aml_Bml_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgy"], x["B_ml_avgy"]))
+ML_Inter$Aml_Bml_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_ml_avgz"], x["B_ml_avgz"]))
 
 #Average
-ML_Inter$Aml_Jml_avg_rmse <- rowMeans(subset(ML_Inter, select = c(Aml_Jml_rmsex, Aml_Jml_rmsey, Aml_Jml_rmsez)))
+ML_Inter$Aml_Bml_avg_rmse <- rowMeans(subset(ML_Inter, select = c(Aml_Bml_rmsex, Aml_Bml_rmsey, Aml_Bml_rmsez)))
 ```
 Average of RMSE x, y, z across all landmarks
 ```{r}
-mean(ML_Inter$Aml_Jml_rmsex)
-mean(ML_Inter$Aml_Jml_rmsey)
-mean(ML_Inter$Aml_Jml_rmsez)
+mean(ML_Inter$Aml_Bml_rmsex)
+mean(ML_Inter$Aml_Bml_rmsey)
+mean(ML_Inter$Aml_Bml_rmsez)
 ```
 Boxplot of RMSE x, y, z
 ```{r}
-ggplot(data = melt(ML_Inter[, c("ID", "LM.Num", "LM.Name", "Aml_Jml_rmsex", "Aml_Jml_rmsey", "Aml_Jml_rmsez")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_rmsex", "Aml_Jml_rmsey", "Aml_Jml_rmsez"), labels=c("X", "Y", "Z"))+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("Inter-observer error")
+ggplot(data = melt(ML_Inter[, c("ID", "LM.Num", "LM.Name", "Aml_Bml_rmsex", "Aml_Bml_rmsey", "Aml_Bml_rmsez")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Bml_rmsex", "Aml_Bml_rmsey", "Aml_Bml_rmsez"), labels=c("X", "Y", "Z"))+ylab("Root mean squared error (mm)")+xlab("Landmark")+ggtitle("Inter-observer error")
 ```
 One high sdx value for chelion left
 ```{r}
-ML_Inter[which(ML_Inter$Aml_Jml_rmsex == max(ML_Inter$Aml_Jml_rmsex)),]
+ML_Inter[which(ML_Inter$Aml_Bml_rmsex == max(ML_Inter$Aml_Bml_rmsex)),]
 ```
  
 ##Average per landmark 
 ```{r}
-ML_InterByLandmark <- ddply(ML_Inter,~LM.Name,summarise, Aml_Jml_rmsex = mean(Aml_Jml_rmsex), Aml_Jml_rmsey = mean(Aml_Jml_rmsey), Aml_Jml_rmsez = mean(Aml_Jml_rmsez), Aml_Jml_avg_rmse = mean(Aml_Jml_avg_rmse)) 
+ML_InterByLandmark <- ddply(ML_Inter,~LM.Name,summarise, Aml_Bml_rmsex = mean(Aml_Bml_rmsex), Aml_Bml_rmsey = mean(Aml_Bml_rmsey), Aml_Bml_rmsez = mean(Aml_Bml_rmsez), Aml_Bml_avg_rmse = mean(Aml_Bml_avg_rmse)) 
 
 write.table(ML_InterByLandmark, "Manuscript/Tables/ML_InterByLandmarks.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 
@@ -201,94 +150,95 @@ ML_InterByLandmark
 ```
 
 #Correlation between manual and automatic landmarks
-Create the average of AZ's landmarks as well as JW's landmarks to directly compare to the automatic landmarks. 
+Create the average of A's landmarks as well as B's landmarks to directly compare to the automatic landmarks. 
 ```{r}
-landmarks$B_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "J_ml_x1", "J_ml_x2", "J_ml_x3")])) 
-landmarks$B_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "J_ml_y1", "J_ml_y2", "J_ml_y3")]))
-landmarks$B_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "J_ml_z1", "J_ml_z2", "J_ml_z3")]))
+landmarks$C_ml_avgx <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_x1", "A_ml_x2", "A_ml_x3", "B_ml_x1", "B_ml_x2", "B_ml_x3")])) 
+landmarks$C_ml_avgy <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_y1", "A_ml_y2", "A_ml_y3", "B_ml_y1", "B_ml_y2", "B_ml_y3")]))
+landmarks$C_ml_avgz <- apply(landmarks[4:ncol(landmarks)], 1, function(x) mean(x[c("A_ml_z1", "A_ml_z2", "A_ml_z3", "B_ml_z1", "B_ml_z2", "B_ml_z3")]))
 ```
 Intraclass correlation coefficient between manual and automatic landmarks
 ```{r}
-#AZ's data 
+#A's data 
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgx", "A_loo_x")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_AZ_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_Ax <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgy", "A_loo_y")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_AZ_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_Ay <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","A_ml_avgz", "A_loo_z")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_AZ_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_Az <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 
-#JW's data
-ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgx", "J_loo_x")], id.vars = c("ID", "LM.Name"))
-ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_JW_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
-
-ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgy", "J_loo_y")], id.vars = c("ID", "LM.Name"))
-ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_JW_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
-
-ICCmelt <- melt(landmarks[c("ID", "LM.Name","J_ml_avgz", "J_loo_z")], id.vars = c("ID", "LM.Name"))
-ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_JW_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
-
-#Both
+#B's data
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgx", "B_loo_x")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_Both_x <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_Bx <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgy", "B_loo_y")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_Both_y <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_By <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 
 ICCmelt <- melt(landmarks[c("ID", "LM.Name","B_ml_avgz", "B_loo_z")], id.vars = c("ID", "LM.Name"))
 ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
-ICC_Both_z <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+ICC_Bz <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+#Combined (C)
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","C_ml_avgx", "C_loo_x")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Cx <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","C_ml_avgy", "C_loo_y")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Cy <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
+
+ICCmelt <- melt(landmarks[c("ID", "LM.Name","C_ml_avgz", "C_loo_z")], id.vars = c("ID", "LM.Name"))
+ICCmelt$group <- apply(ICCmelt[, c("ID", "LM.Name")], 1, paste, collapse = "-")
+ICC_Cz <- ICCest(x=group, y=value, data=ICCmelt, alpha = 0.05, CI.type = "Smith")
 ```
 Pearson's correlation between manual landmarks and automatic landmarks
 ```{r}
-cor(landmarks$B_ml_avgx, landmarks$B_loo_x, method = "pearson")
-cor(landmarks$B_ml_avgy, landmarks$B_loo_y, method = "pearson")
-cor(landmarks$B_ml_avgz, landmarks$B_loo_z, method = "pearson")
+cor(landmarks$C_ml_avgx, landmarks$C_loo_x, method = "pearson")
+cor(landmarks$C_ml_avgy, landmarks$C_loo_y, method = "pearson")
+cor(landmarks$C_ml_avgz, landmarks$C_loo_z, method = "pearson")
 ```
 Plot these correlations
 ```{r}
-multiplot(
-  ggplot(landmarks, aes(B_ml_avgx, B_loo_x))+geom_point(size=0.5)+theme_bw()+labs(title = "X", subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Automatic landmark coordinates"),
-  ggplot(landmarks, aes(B_ml_avgy, B_loo_y))+geom_point(size=0.5)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Manual landmark coordinates", y=NULL),
-  ggplot(landmarks, aes(B_ml_avgz, B_loo_z))+geom_point(size=0.5)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y=NULL), cols = 3)
+Corr_Cml_Cloo_x <- ggplot(landmarks, aes(C_ml_avgx, C_loo_x))+geom_point(size=0.5)+theme_bw()+labs(title = "X", subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Automatic landmark coordinates")
+Corr_Cml_Cloo_y <- ggplot(landmarks, aes(C_ml_avgy, C_loo_y))+geom_point(size=0.5)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Manual landmark coordinates", y=NULL)
+Corr_Cml_Cloo_z <- ggplot(landmarks, aes(C_ml_avgz, C_loo_z))+geom_point(size=0.5)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y=NULL)
+
+ggarrange(Corr_Cml_Cloo_x, Corr_Cml_Cloo_y, Corr_Cml_Cloo_z, ncol = 3)
 ```
 
 Bland Altman Plot
 ```{r}
 #X
-ba_both_x <- bland.altman.stats(landmarks$B_ml_avgx, landmarks$B_loo_x)
-ba_both_x_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
-ba_both_x_df$means <- ba_both_x$means
-ba_both_x_df$diffs <- ba_both_x$diffs
+ba_Cx <- bland.altman.stats(landmarks$C_ml_avgx, landmarks$C_loo_x)
+ba_Cx_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
+ba_Cx_df$means <- ba_Cx$means
+ba_Cx_df$diffs <- ba_Cx$diffs
 
-ba_both_xplot <- ggplot(ba_both_x_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "X",subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Differences (mm)")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_Cx_plot <- ggplot(ba_Cx_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "X",subtitle="ICC = 0.999523\n95% CI = [0.999456, 0.999590]", x="", y="Differences (mm)")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_Cx$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cx$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_Cx$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cx$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cx$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cx$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cx$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cx$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cx$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 #Y
-ba_both_y <- bland.altman.stats(landmarks$B_ml_avgy, landmarks$B_loo_y)
-ba_both_y_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
-ba_both_y_df$means <- ba_both_y$means
-ba_both_y_df$diffs <- ba_both_y$diffs
+ba_Cy <- bland.altman.stats(landmarks$C_ml_avgy, landmarks$C_loo_y)
+ba_Cy_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
+ba_Cy_df$means <- ba_Cy$means
+ba_Cy_df$diffs <- ba_Cy$diffs
 
-ba_both_yplot <- ggplot(ba_both_y_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Means (mm)", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_y$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_y$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_y$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_Cy_plot <- ggplot(ba_Cy_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Y", subtitle="ICC = 0.999757\n95% CI = [0.999723, 0.999792]", x="Means (mm)", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_Cy$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cy$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_Cy$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cy$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cy$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cy$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cy$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cy$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cy$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 #Z
-ba_both_z <- bland.altman.stats(landmarks$B_ml_avgz, landmarks$B_loo_z)
-ba_both_z_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
-ba_both_z_df$means <- ba_both_z$means
-ba_both_z_df$diffs <- ba_both_z$diffs
+ba_Cz <- bland.altman.stats(landmarks$C_ml_avgz, landmarks$C_loo_z)
+ba_Cz_df <- as.data.frame(matrix(c(landmarks$ID, landmarks$LM.Name), nrow = 779))
+ba_Cz_df$means <- ba_Cz$means
+ba_Cz_df$diffs <- ba_Cz$diffs
 
-ba_both_zplot <- ggplot(ba_both_z_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_both_z$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_z$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_z$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_Cz_plot <- ggplot(ba_Cz_df, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,6)+theme_bw()+labs(title = "Z", subtitle="ICC = 0.999921\n95% CI = [0.999910, 0.999932]", x="", y="")+theme(plot.subtitle=element_text(size=8))+geom_hline(yintercept = ba_Cz$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cz$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_Cz$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_Cz$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cz$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cz$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cz$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_Cz$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_Cz$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
-ggarrange(ba_both_xplot, ba_both_yplot, ba_both_zplot, ncol = 3)
+ggarrange(ba_Cx_plot, ba_Cy_plot, ba_Cz_plot, ncol = 3)
 ```
 
 #Comparison of inter-observer error calculated with manual data vs. inter-observer error calculated with automatic data
@@ -299,71 +249,71 @@ MLvsAuto <- landmarks[,c("ID", "LM.Num", "LM.Name")]
 ```
 RMSE between the ML landmarks and the automatic landmarks.
 ```{r}
-#AZ manual to AZ auto
+#A manual to A auto
 MLvsAuto$Aml_Aloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_x'], x['A_ml_avgx']))
 MLvsAuto$Aml_Aloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_y'], x['A_ml_avgy']))
 MLvsAuto$Aml_Aloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_z'], x['A_ml_avgz']))
 MLvsAuto$Aml_Aloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aml_Aloo_rmsex, Aml_Aloo_rmsey, Aml_Aloo_rmsez)))
 
-#AZ manual to JW auto
-MLvsAuto$Aml_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_x'], x['A_ml_avgx']))
-MLvsAuto$Aml_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_y'], x['A_ml_avgy']))
-MLvsAuto$Aml_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_z'], x['A_ml_avgz']))
-MLvsAuto$Aml_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aml_Jloo_rmsex, Aml_Jloo_rmsey, Aml_Jloo_rmsez)))
-
-#AZ manual to B auto
+#A manual to B auto
 MLvsAuto$Aml_Bloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['A_ml_avgx']))
 MLvsAuto$Aml_Bloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['A_ml_avgy']))
 MLvsAuto$Aml_Bloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['A_ml_avgz']))
 MLvsAuto$Aml_Bloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aml_Bloo_rmsex, Aml_Bloo_rmsey, Aml_Bloo_rmsez)))
 
-#JW manual to JW auto
-MLvsAuto$Jml_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_x'], x['J_ml_avgx']))
-MLvsAuto$Jml_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_y'], x['J_ml_avgy']))
-MLvsAuto$Jml_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_z'], x['J_ml_avgz']))
-MLvsAuto$Jml_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Jml_Jloo_rmsex, Jml_Jloo_rmsey, Jml_Jloo_rmsez)))
+#A manual to C auto
+MLvsAuto$Aml_Cloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_x'], x['A_ml_avgx']))
+MLvsAuto$Aml_Cloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_y'], x['A_ml_avgy']))
+MLvsAuto$Aml_Cloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_z'], x['A_ml_avgz']))
+MLvsAuto$Aml_Cloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aml_Cloo_rmsex, Aml_Cloo_rmsey, Aml_Cloo_rmsez)))
 
-#JW manual to AZ auto
-MLvsAuto$Jml_Aloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_x'], x['J_ml_avgx']))
-MLvsAuto$Jml_Aloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_y'], x['J_ml_avgy']))
-MLvsAuto$Jml_Aloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_z'], x['J_ml_avgz']))
-MLvsAuto$Jml_Aloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Jml_Aloo_rmsex, Jml_Aloo_rmsey, Jml_Aloo_rmsez)))
-
-#JW manual to B auto
-MLvsAuto$Jml_Bloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['J_ml_avgx']))
-MLvsAuto$Jml_Bloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['J_ml_avgy']))
-MLvsAuto$Jml_Bloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['J_ml_avgz']))
-MLvsAuto$Jml_Bloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Jml_Bloo_rmsex, Jml_Bloo_rmsey, Jml_Bloo_rmsez)))
-
-#Both manual to Both auto
+#B manual to B auto
 MLvsAuto$Bml_Bloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['B_ml_avgx']))
 MLvsAuto$Bml_Bloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['B_ml_avgy']))
 MLvsAuto$Bml_Bloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['B_ml_avgz']))
 MLvsAuto$Bml_Bloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Bml_Bloo_rmsex, Bml_Bloo_rmsey, Bml_Bloo_rmsez)))
 
-#Both manual to AZ auto
+#B manual to A auto
 MLvsAuto$Bml_Aloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_x'], x['B_ml_avgx']))
 MLvsAuto$Bml_Aloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_y'], x['B_ml_avgy']))
 MLvsAuto$Bml_Aloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_z'], x['B_ml_avgz']))
 MLvsAuto$Bml_Aloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Bml_Aloo_rmsex, Bml_Aloo_rmsey, Bml_Aloo_rmsez)))
 
-#Both manual to JW auto
-MLvsAuto$Bml_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_x'], x['B_ml_avgx']))
-MLvsAuto$Bml_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_y'], x['B_ml_avgy']))
-MLvsAuto$Bml_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['J_loo_z'], x['B_ml_avgz']))
-MLvsAuto$Bml_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Bml_Jloo_rmsex, Bml_Jloo_rmsey, Bml_Jloo_rmsez)))
+#B manual to C auto
+MLvsAuto$Bml_Cloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_x'], x['B_ml_avgx']))
+MLvsAuto$Bml_Cloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_y'], x['B_ml_avgy']))
+MLvsAuto$Bml_Cloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_z'], x['B_ml_avgz']))
+MLvsAuto$Bml_Cloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Bml_Cloo_rmsex, Bml_Cloo_rmsey, Bml_Cloo_rmsez)))
 
-#Between AZ auto and JW auto 
-MLvsAuto$Aloo_Jloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_x"], x["J_loo_x"]))
-MLvsAuto$Aloo_Jloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_y"], x["J_loo_y"]))
-MLvsAuto$Aloo_Jloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_z"], x["J_loo_z"]))
-MLvsAuto$Aloo_Jloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aloo_Jloo_rmsex, Aloo_Jloo_rmsey, Aloo_Jloo_rmsez)))
+#C manual to C auto
+MLvsAuto$Cml_Cloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_x'], x['C_ml_avgx']))
+MLvsAuto$Cml_Cloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_y'], x['C_ml_avgy']))
+MLvsAuto$Cml_Cloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['C_loo_z'], x['C_ml_avgz']))
+MLvsAuto$Cml_Cloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Cml_Cloo_rmsex, Cml_Cloo_rmsey, Cml_Cloo_rmsez)))
+
+#C manual to A auto
+MLvsAuto$Cml_Aloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_x'], x['C_ml_avgx']))
+MLvsAuto$Cml_Aloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_y'], x['C_ml_avgy']))
+MLvsAuto$Cml_Aloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['A_loo_z'], x['C_ml_avgz']))
+MLvsAuto$Cml_Aloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Cml_Aloo_rmsex, Cml_Aloo_rmsey, Cml_Aloo_rmsez)))
+
+#C manual to B auto
+MLvsAuto$Cml_Bloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_x'], x['C_ml_avgx']))
+MLvsAuto$Cml_Bloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_y'], x['C_ml_avgy']))
+MLvsAuto$Cml_Bloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x['B_loo_z'], x['C_ml_avgz']))
+MLvsAuto$Cml_Bloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Cml_Bloo_rmsex, Cml_Bloo_rmsey, Cml_Bloo_rmsez)))
+
+#Between A auto and B auto 
+MLvsAuto$Aloo_Bloo_rmsex <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_x"], x["B_loo_x"]))
+MLvsAuto$Aloo_Bloo_rmsey <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_y"], x["B_loo_y"]))
+MLvsAuto$Aloo_Bloo_rmsez <- apply(landmarks[4:ncol(landmarks)], 1, function(x) RMSE(x["A_loo_z"], x["B_loo_z"]))
+MLvsAuto$Aloo_Bloo_avg_rmse <- rowMeans(subset(MLvsAuto, select = c(Aloo_Bloo_rmsex, Aloo_Bloo_rmsey, Aloo_Bloo_rmsez)))
 
 #Put together the results of the manual landmarking inter-observer error and the results calculated with auto 
-MLvsAuto$Aml_Jml_avg_rmse <- ML_Inter$Aml_Jml_avg_rmse
-MLvsAuto$Aml_Jml_rmsex <- ML_Inter$Aml_Jml_rmsex
-MLvsAuto$Aml_Jml_rmsey <- ML_Inter$Aml_Jml_rmsey
-MLvsAuto$Aml_Jml_rmsez <- ML_Inter$Aml_Jml_rmsez
+MLvsAuto$Aml_Bml_avg_rmse <- ML_Inter$Aml_Bml_avg_rmse
+MLvsAuto$Aml_Bml_rmsex <- ML_Inter$Aml_Bml_rmsex
+MLvsAuto$Aml_Bml_rmsey <- ML_Inter$Aml_Bml_rmsey
+MLvsAuto$Aml_Bml_rmsez <- ML_Inter$Aml_Bml_rmsez
 ```
 Write table for manuscript 
 ```{r}
@@ -372,123 +322,104 @@ MLvsAuto_RMSE_ByLandmark <- ddply(MLvsAuto,~LM.Name,summarise,
                                   Aml_Aloo_rmsey = mean(Aml_Aloo_rmsey), 
                                   Aml_Aloo_rmsez = mean(Aml_Aloo_rmsez), 
                                   Aml_Aloo_avg_rmse = mean(Aml_Aloo_avg_rmse), 
-                                  Aml_Jloo_rmsex = mean(Aml_Jloo_rmsex),
-                                  Aml_Jloo_rmsey = mean(Aml_Jloo_rmsey),
-                                  Aml_Jloo_rmsez = mean(Aml_Jloo_rmsez),
-                                  Aml_Jloo_avg_rmse = mean(Aml_Jloo_avg_rmse),
                                   Aml_Bloo_rmsex = mean(Aml_Bloo_rmsex),
                                   Aml_Bloo_rmsey = mean(Aml_Bloo_rmsey),
                                   Aml_Bloo_rmsez = mean(Aml_Bloo_rmsez),
                                   Aml_Bloo_avg_rmse = mean(Aml_Bloo_avg_rmse),
-                                  Jml_Jloo_rmsex = mean(Jml_Jloo_rmsex), 
-                                  Jml_Jloo_rmsey = mean(Jml_Jloo_rmsey), 
-                                  Jml_Jloo_rmsez = mean(Jml_Jloo_rmsez), 
-                                  Jml_Jloo_avg_rmse = mean(Jml_Jloo_avg_rmse), 
-                                  Jml_Aloo_rmsex = mean(Jml_Aloo_rmsex),
-                                  Jml_Aloo_rmsey = mean(Jml_Aloo_rmsey),
-                                  Jml_Aloo_rmsez = mean(Jml_Aloo_rmsez),
-                                  Jml_Aloo_avg_rmse = mean(Jml_Aloo_avg_rmse),
-                                  Jml_Bloo_rmsex = mean(Jml_Bloo_rmsex),
-                                  Jml_Bloo_rmsey = mean(Jml_Bloo_rmsey),
-                                  Jml_Bloo_rmsez = mean(Jml_Bloo_rmsez),
-                                  Jml_Bloo_avg_rmse = mean(Jml_Bloo_avg_rmse),
+                                  Aml_Cloo_rmsex = mean(Aml_Cloo_rmsex),
+                                  Aml_Cloo_rmsey = mean(Aml_Cloo_rmsey),
+                                  Aml_Cloo_rmsez = mean(Aml_Cloo_rmsez),
+                                  Aml_Cloo_avg_rmse = mean(Aml_Cloo_avg_rmse),
                                   Bml_Bloo_rmsex = mean(Bml_Bloo_rmsex), 
                                   Bml_Bloo_rmsey = mean(Bml_Bloo_rmsey), 
                                   Bml_Bloo_rmsez = mean(Bml_Bloo_rmsez), 
-                                  Bml_Bloo_avg_rmse = mean(Bml_Bloo_avg_rmse),
-                                  Bml_Aloo_rmsex = mean(Bml_Aloo_rmsex), 
-                                  Bml_Aloo_rmsey = mean(Bml_Aloo_rmsey), 
-                                  Bml_Aloo_rmsez = mean(Bml_Aloo_rmsez), 
+                                  Bml_Bloo_avg_rmse = mean(Bml_Bloo_avg_rmse), 
+                                  Bml_Aloo_rmsex = mean(Bml_Aloo_rmsex),
+                                  Bml_Aloo_rmsey = mean(Bml_Aloo_rmsey),
+                                  Bml_Aloo_rmsez = mean(Bml_Aloo_rmsez),
                                   Bml_Aloo_avg_rmse = mean(Bml_Aloo_avg_rmse),
-                                  Bml_Jloo_rmsex = mean(Bml_Jloo_rmsex), 
-                                  Bml_Jloo_rmsey = mean(Bml_Jloo_rmsey), 
-                                  Bml_Jloo_rmsez = mean(Bml_Jloo_rmsez), 
-                                  Bml_Jloo_avg_rmse = mean(Bml_Jloo_avg_rmse),
-                                  Aml_Jml_rmsex = mean(Aml_Jml_rmsex),
-                                  Aml_Jml_rmsey = mean(Aml_Jml_rmsey),
-                                  Aml_Jml_rmsez = mean(Aml_Jml_rmsez),
-                                  Aml_Jml_avg_rmse = mean(Aml_Jml_avg_rmse)) 
+                                  Bml_Cloo_rmsex = mean(Bml_Cloo_rmsex),
+                                  Bml_Cloo_rmsey = mean(Bml_Cloo_rmsey),
+                                  Bml_Cloo_rmsez = mean(Bml_Cloo_rmsez),
+                                  Bml_Cloo_avg_rmse = mean(Bml_Cloo_avg_rmse),
+                                  Cml_Cloo_rmsex = mean(Cml_Cloo_rmsex), 
+                                  Cml_Cloo_rmsey = mean(Cml_Cloo_rmsey), 
+                                  Cml_Cloo_rmsez = mean(Cml_Cloo_rmsez), 
+                                  Cml_Cloo_avg_rmse = mean(Cml_Cloo_avg_rmse),
+                                  Cml_Aloo_rmsex = mean(Cml_Aloo_rmsex), 
+                                  Cml_Aloo_rmsey = mean(Cml_Aloo_rmsey), 
+                                  Cml_Aloo_rmsez = mean(Cml_Aloo_rmsez), 
+                                  Cml_Aloo_avg_rmse = mean(Cml_Aloo_avg_rmse),
+                                  Cml_Bloo_rmsex = mean(Cml_Bloo_rmsex), 
+                                  Cml_Bloo_rmsey = mean(Cml_Bloo_rmsey), 
+                                  Cml_Bloo_rmsez = mean(Cml_Bloo_rmsez), 
+                                  Cml_Bloo_avg_rmse = mean(Cml_Bloo_avg_rmse),
+                                  Aloo_Bloo_rmsex = mean(Aloo_Bloo_rmsex),
+                                  Aloo_Bloo_rmsey = mean(Aloo_Bloo_rmsey),
+                                  Aloo_Bloo_rmsez = mean(Aloo_Bloo_rmsez),
+                                  Aloo_Bloo_avg_rmse = mean(Aloo_Bloo_avg_rmse),
+                                  Aml_Bml_rmsex = mean(Aml_Bml_rmsex),
+                                  Aml_Bml_rmsey = mean(Aml_Bml_rmsey),
+                                  Aml_Bml_rmsez = mean(Aml_Bml_rmsez),
+                                  Aml_Bml_avg_rmse = mean(Aml_Bml_avg_rmse)) 
 
 write.table(MLvsAuto_RMSE_ByLandmark, "Manuscript/Tables/MLvsAuto_All_RMSE_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
 ```
 
 ##Plotting all comparisons
-Two way comparison to make sure that the automatic landmkaring doesn't add error. I'm pretty sure we just did a similar thing to this with the Bland Altman, but let's do it in a way that can be compared.
-Plot
 ```{r}
-ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Jloo_avg_rmse","Jml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Jloo_avg_rmse", "Jml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse"), labels=c("Aml - Jml", "Aml - Aauto", "Aml - Jauto", "Jml - Jauto", "Jml - Aauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
+ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Bml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Bloo_avg_rmse","Bml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Bml_avg_rmse", "Aml_Aloo_avg_rmse","Aml_Bloo_avg_rmse", "Bml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse"), labels=c("Aml - Bml", "Aml - Aauto", "Aml - Bauto", "Bml - Bauto", "Bml - Aauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
 ```
 
-##AZ vs JW comparisons
+##A vs B comparisons
 Compare:
-Aml - Jml
-Aml - Jauto
-Jml - Aauto
+Aml - Bml
+Aml - Bauto
+Aauto - Bml
 ```{r}
-ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aml_Jloo_avg_rmse", "Jml_Aloo_avg_rmse"), labels=c("Aml - Jml", "Aml - Jauto", "Jml - Aauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
-```
-
-Write table for manuscript
-```{r}
-tmp <- MLvsAuto[c("ID", "LM.Name", "Aml_Jml_rmsex", "Aml_Jml_rmsey", "Aml_Jml_rmsez", "Aml_Jml_avg_rmse", "Aml_Jloo_rmsex", "Aml_Jloo_rmsey", "Aml_Jloo_rmsez", "Aml_Jloo_avg_rmse", "Jml_Aloo_rmsex", "Jml_Aloo_rmsey", "Jml_Aloo_rmsez", "Jml_Aloo_avg_rmse")]
-
-tmp_PerLMK <- ddply(.data = tmp, ~ LM.Name , summarize,
-                    Aml_Jml_rmsex = mean(Aml_Jml_rmsex), 
-                    Aml_Jml_rmsey = mean(Aml_Jml_rmsey), 
-                    Aml_Jml_rmsez = mean(Aml_Jml_rmsez), 
-                    Aml_Jml_avg_rmse = mean(Aml_Jml_avg_rmse), 
-                    Aml_Jloo_rmsex = mean(Aml_Jloo_rmsex), 
-                    Aml_Jloo_rmsey = mean(Aml_Jloo_rmsey), 
-                    Aml_Jloo_rmsez = mean(Aml_Jloo_rmsez), 
-                    Aml_Jloo_avg_rmse = mean(Aml_Jloo_avg_rmse),
-                    Jml_Aloo_rmsex = mean(Jml_Aloo_rmsex), 
-                    Jml_Aloo_rmsey = mean(Jml_Aloo_rmsey), 
-                    Jml_Aloo_rmsez = mean(Jml_Aloo_rmsez), 
-                    Jml_Aloo_avg_rmse = mean(Jml_Aloo_avg_rmse))
-
-write.table(tmp_PerLMK, "Manuscript/Tables/AmlVsJml_AmlVsJauto_AautoVsJml_RMSE_PerLMK.txt", row.names = F, col.names = T, sep = "\t", quote = F)
+ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Bml_avg_rmse", "Aml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_brewer(breaks=c("Aml_Bml_avg_rmse", "Aml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse"), labels=c("Aml - Bml", "Aml - Bauto", "Aauto - Bml"), palette = "Set2")+ylab("Root mean squared error (mm)")+xlab("Landmark")
 ```
 
 T-test on values per landmark to see if the values of the manual landmarks are less than the values of the automatic landmarks 
 ```{r}
-AmlVsJml_AmlVsJloo_RMSE.Ttest = melt(MLvsAuto[c("LM.Name", "Aml_Jml_avg_rmse", "Aml_Jloo_avg_rmse")], id.vars = "LM.Name") %>% group_by(LM.Name) %>% do(tidy(t.test(value~variable, data=., paired=TRUE)))
+#Aml vs Bloo
+AmlVsBml_AmlVsBloo_RMSE.Ttest = melt(MLvsAuto[c("LM.Name", "Aml_Bml_avg_rmse", "Aml_Bloo_avg_rmse")], id.vars = "LM.Name") %>% group_by(LM.Name) %>% do(tidy(t.test(value~variable, data=., paired=TRUE)))
 
-AmlVsJml_AmlVsJloo_RMSE.Ttest
+AmlVsBml_AmlVsBloo_RMSE.Ttest
 
-write.table(AmlVsJml_AmlVsJloo_RMSE.Ttest, "Manuscript/Tables/AmlVsJml_AmlVsJauto_RMSE.Ttest.txt", row.names = F, col.names = T, sep = "\t", quote = F)
-```
-```{r}
-AmlVsJml_AlooVsJml_RMSE.Ttest = melt(MLvsAuto[c("LM.Name", "Aml_Jml_avg_rmse", "Jml_Aloo_avg_rmse")], id.vars = "LM.Name") %>% group_by(LM.Name) %>% do(tidy(t.test(value~variable, data=., paired=TRUE)))
+write.table(AmlVsBml_AmlVsBloo_RMSE.Ttest, "Manuscript/Tables/AmlVsBml_AmlVsBauto_RMSE.Ttest.txt", row.names = F, col.names = T, sep = "\t", quote = F)
 
-AmlVsJml_AlooVsJml_RMSE.Ttest
+#Aloo vs. Bml
+AmlVsBml_AlooVsBml_RMSE.Ttest = melt(MLvsAuto[c("LM.Name", "Aml_Bml_avg_rmse", "Bml_Aloo_avg_rmse")], id.vars = "LM.Name") %>% group_by(LM.Name) %>% do(tidy(t.test(value~variable, data=., paired=TRUE)))
 
-write.table(AmlVsJml_AlooVsJml_RMSE.Ttest, "Manuscript/Tables/AmlVsJml_AautoVsJml_RMSE.Ttest.txt", row.names = F, col.names = T, sep = "\t", quote = F)
+AmlVsBml_AlooVsBml_RMSE.Ttest
+
+write.table(AmlVsBml_AlooVsBml_RMSE.Ttest, "Manuscript/Tables/AmlVsBml_AautoVsBml_RMSE.Ttest.txt", row.names = F, col.names = T, sep = "\t", quote = F)
 ```
 
 Compare: 
-Aml - Jml 
-Aauto - Jauto
+Aml - Bml 
+Aauto - Bauto
 
 Graph
 ```{r}
-ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aloo_Jloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aloo_Jloo_avg_rmse"), labels=c("Aml - Jml", "Aauto - Jauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
+ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Bml_avg_rmse", "Aloo_Bloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_bw()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "right", legend.title = element_blank())+scale_fill_brewer(breaks=c("Aml_Bml_avg_rmse", "Aloo_Bloo_avg_rmse"), labels=c("Aml - Bml", "Aauto - Bauto"), palette = "Set2")+ylab("Root mean squared error (mm)")+xlab("Landmark")
 ```
 
 Compare:
-Aml - Jml
+Aml - Bml
 Aml - Aauto
-Jml - Jauto
+Bml - Bauto
 ```{r}
-ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse", "Jml_Jloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Jml_avg_rmse", "Aml_Aloo_avg_rmse", "Jml_Jloo_avg_rmse"), labels=c("Aml - Jml", "Aml - Aauto", "Jml - Jauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
+ggplot(data = melt(MLvsAuto[, c("ID", "LM.Num", "LM.Name",  "Aml_Bml_avg_rmse", "Aml_Aloo_avg_rmse", "Bml_Bloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Bml_avg_rmse", "Aml_Aloo_avg_rmse", "Bml_Bloo_avg_rmse"), labels=c("Aml - Bml", "Aml - Aauto", "Bml - Bauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
 ```
 
 ##Levene's test for equal variance (used because the data do not follow a normal distribution)
-
 See if the variances of these comparisons are equal using Levene's test
 Create an array to store the results
 ```{r}
 MLvsAuto_Levene<- array(NA, c(10, 2, 19))
-dimnames(MLvsAuto_Levene)[[1]] <- c("Aml_Aloo_avg_rmse", "Aml_Jloo_avg_rmse", "Aml_Bloo_avg_rmse", "Jml_Aloo_avg_rmse", "Jml_Jloo_avg_rmse", "Jml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse", "Bml_Jloo_avg_rmse", "Bml_Bloo_avg_rmse", "Aloo_Jloo_avg_rmse")
+dimnames(MLvsAuto_Levene)[[1]] <- c("Aml_Aloo_avg_rmse", "Aml_Bloo_avg_rmse", "Aml_Cloo_avg_rmse", "Bml_Aloo_avg_rmse", "Bml_Bloo_avg_rmse", "Bml_Cloo_avg_rmse", "Cml_Aloo_avg_rmse", "Cml_Bloo_avg_rmse", "Cml_Cloo_avg_rmse", "Aloo_Bloo_avg_rmse")
 dimnames(MLvsAuto_Levene)[[2]] <- c("Fvalue", "Pvalue")
 dimnames(MLvsAuto_Levene)[[3]] <- as.list(unique(MLvsAuto$LM.Name))
 ```
@@ -496,7 +427,7 @@ Calculate Levene's test for each landmark and each comparison.
 ```{r}
 for (i in seq(1,19,1)){
   for (j in seq(1,10,1)){
-    suppressMessages(levene_tmp <- leveneTest(value~variable, data=melt(MLvsAuto[which(MLvsAuto$LM.Name == dimnames(MLvsAuto_Levene)[[3]][i]), c("Aml_Jml_avg_rmse",dimnames(MLvsAuto_Levene)[[1]][j])])))
+    suppressMessages(levene_tmp <- leveneTest(value~variable, data=melt(MLvsAuto[which(MLvsAuto$LM.Name == dimnames(MLvsAuto_Levene)[[3]][i]), c("Aml_Bml_avg_rmse",dimnames(MLvsAuto_Levene)[[1]][j])])))
     MLvsAuto_Levene[j,1,i] <- levene_tmp[1,2] 
     MLvsAuto_Levene[j,2,i] <- levene_tmp[1,3]
   }
@@ -505,318 +436,318 @@ for (i in seq(1,19,1)){
 Turn 3D array into 2D matrix
 ```{r}
 dim(MLvsAuto_Levene) <- c(10,2*19)
-rownames(MLvsAuto_Levene) <- c("Aml_Aloo_avg_rmse", "Aml_Jloo_avg_rmse", "Aml_Bloo_avg_rmse", "Jml_Aloo_avg_rmse", "Jml_Jloo_avg_rmse", "Jml_Bloo_avg_rmse", "Bml_Aloo_avg_rmse", "Bml_Jloo_avg_rmse", "Bml_Bloo_avg_rmse", "Aloo_Jloo_avg_rmse")
+rownames(MLvsAuto_Levene) <- c("Aml_Aloo_avg_rmse", "Aml_Bloo_avg_rmse", "Aml_Cloo_avg_rmse", "Bml_Aloo_avg_rmse", "Bml_Bloo_avg_rmse", "Bml_Cloo_avg_rmse", "Cml_Aloo_avg_rmse", "Cml_Bloo_avg_rmse", "Cml_Cloo_avg_rmse", "Aloo_Bloo_avg_rmse")
 colnames(MLvsAuto_Levene) <- paste0(rep(unique(MLvsAuto$LM.Name), each=2), rep(c("_F", "_p")))
 
-write.table(MLvsAuto_Levene, "Manuscript/Tables/MLvsAuto_Levene.txt", row.names = T, col.names = T, quote = F, sep = "\t")
+write.table(t(MLvsAuto_Levene), "Manuscript/Tables/MLvsAuto_Levene.txt", row.names = T, col.names = T, quote = F, sep = "\t")
 ```
 
 #Read in data for Morpho analysis
 ##Convert manual landmarks into morpho format
-###AZ Manual landmarks
-####AZ Iteration 1
+###Observer A Manual landmarks
+####A Iteration 1
 Make empty dataframe to store landmarks
 ```{r}
-AZ_MorphoData_Manual_1 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(AZ_MorphoData_Manual_1) <- paste(unique(landmarks$ID), "_AZ_ML_1", sep = "")
-colnames(AZ_MorphoData_Manual_1) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+A_MorphoData_Manual_1 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(A_MorphoData_Manual_1) <- paste(unique(landmarks$ID), "_A_ML_1", sep = "")
+colnames(A_MorphoData_Manual_1) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-AZ_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(AZ_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-AZ_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-AZ_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x1","A_ml_y1", "A_ml_z1"), length = 2337)
-AZ_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-AZ_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+A_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(A_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+A_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+A_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x1","A_ml_y1", "A_ml_z1"), length = 2337)
+A_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+A_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(AZ_MorphoData_ManualMap)){AZ_MorphoData_Manual_1[AZ_MorphoData_ManualMap[i,3], AZ_MorphoData_ManualMap[i,4]] <- landmarks[AZ_MorphoData_ManualMap[i,1], AZ_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(A_MorphoData_ManualMap)){A_MorphoData_Manual_1[A_MorphoData_ManualMap[i,3], A_MorphoData_ManualMap[i,4]] <- landmarks[A_MorphoData_ManualMap[i,1], A_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-AZ_MorphoData_Manual_1 <- as.matrix(AZ_MorphoData_Manual_1)
+A_MorphoData_Manual_1 <- as.matrix(A_MorphoData_Manual_1)
 ```
-####AZ Iteration 2
+####A Iteration 2
 Make empty dataframe to store landmarks
 ```{r}
-AZ_MorphoData_Manual_2 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(AZ_MorphoData_Manual_2) <- paste(unique(landmarks$ID), "_AZ_ML_2", sep = "")
-colnames(AZ_MorphoData_Manual_2) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+A_MorphoData_Manual_2 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(A_MorphoData_Manual_2) <- paste(unique(landmarks$ID), "_A_ML_2", sep = "")
+colnames(A_MorphoData_Manual_2) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-AZ_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(AZ_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-AZ_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-AZ_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x2","A_ml_y2", "A_ml_z2"), length = 2337)
-AZ_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-AZ_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+A_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(A_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+A_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+A_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x2","A_ml_y2", "A_ml_z2"), length = 2337)
+A_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+A_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(AZ_MorphoData_ManualMap)){AZ_MorphoData_Manual_2[AZ_MorphoData_ManualMap[i,3], AZ_MorphoData_ManualMap[i,4]] <- landmarks[AZ_MorphoData_ManualMap[i,1], AZ_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(A_MorphoData_ManualMap)){A_MorphoData_Manual_2[A_MorphoData_ManualMap[i,3], A_MorphoData_ManualMap[i,4]] <- landmarks[A_MorphoData_ManualMap[i,1], A_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-AZ_MorphoData_Manual_2 <- as.matrix(AZ_MorphoData_Manual_2)
+A_MorphoData_Manual_2 <- as.matrix(A_MorphoData_Manual_2)
 ```
-####AZ Iteration 3
+####A Iteration 3
 Make empty dataframe to store landmarks
 ```{r}
-AZ_MorphoData_Manual_3 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(AZ_MorphoData_Manual_3) <- paste(unique(landmarks$ID), "_AZ_ML_3", sep = "")
-colnames(AZ_MorphoData_Manual_3) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+A_MorphoData_Manual_3 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(A_MorphoData_Manual_3) <- paste(unique(landmarks$ID), "_A_ML_3", sep = "")
+colnames(A_MorphoData_Manual_3) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-AZ_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(AZ_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-AZ_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-AZ_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x3","A_ml_y3", "A_ml_z3"), length = 2337)
-AZ_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-AZ_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+A_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(A_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+A_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+A_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_x3","A_ml_y3", "A_ml_z3"), length = 2337)
+A_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+A_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(AZ_MorphoData_ManualMap)){AZ_MorphoData_Manual_3[AZ_MorphoData_ManualMap[i,3], AZ_MorphoData_ManualMap[i,4]] <- landmarks[AZ_MorphoData_ManualMap[i,1], AZ_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(A_MorphoData_ManualMap)){A_MorphoData_Manual_3[A_MorphoData_ManualMap[i,3], A_MorphoData_ManualMap[i,4]] <- landmarks[A_MorphoData_ManualMap[i,1], A_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-AZ_MorphoData_Manual_3 <- as.matrix(AZ_MorphoData_Manual_3)
+A_MorphoData_Manual_3 <- as.matrix(A_MorphoData_Manual_3)
 ```
-####AZ average
+####A average
 Make empty dataframe to store landmarks
 ```{r}
-AZ_MorphoData_Manual_avg <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(AZ_MorphoData_Manual_avg) <- paste(unique(landmarks$ID), "_AZ_ML_avg", sep = "")
-colnames(AZ_MorphoData_Manual_avg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+A_MorphoData_Manual_avg <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(A_MorphoData_Manual_avg) <- paste(unique(landmarks$ID), "_A_ML_avg", sep = "")
+colnames(A_MorphoData_Manual_avg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-AZ_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(AZ_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-AZ_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-AZ_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_avgx","A_ml_avgy", "A_ml_avgz"), length = 2337)
-AZ_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-AZ_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+A_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(A_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+A_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+A_MorphoData_ManualMap$sourcecolumn <- rep(c("A_ml_avgx","A_ml_avgy", "A_ml_avgz"), length = 2337)
+A_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+A_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(AZ_MorphoData_ManualMap)){AZ_MorphoData_Manual_avg[AZ_MorphoData_ManualMap[i,3], AZ_MorphoData_ManualMap[i,4]] <- landmarks[AZ_MorphoData_ManualMap[i,1], AZ_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(A_MorphoData_ManualMap)){A_MorphoData_Manual_avg[A_MorphoData_ManualMap[i,3], A_MorphoData_ManualMap[i,4]] <- landmarks[A_MorphoData_ManualMap[i,1], A_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-AZ_MorphoData_Manual_avg <- as.matrix(AZ_MorphoData_Manual_avg)
+A_MorphoData_Manual_avg <- as.matrix(A_MorphoData_Manual_avg)
 ```
 
-###JW Manual Landmarks
-####JW Iteration 1
+###B Manual Landmarks
+####B Iteration 1
 Make empty dataframe to store landmarks
 ```{r}
-JW_MorphoData_Manual_1 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(JW_MorphoData_Manual_1) <- paste(unique(landmarks$ID), "_JW_ML_1", sep = "")
-colnames(JW_MorphoData_Manual_1) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+B_MorphoData_Manual_1 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(B_MorphoData_Manual_1) <- paste(unique(landmarks$ID), "_B_ML_1", sep = "")
+colnames(B_MorphoData_Manual_1) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-JW_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(JW_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-JW_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-JW_MorphoData_ManualMap$sourcecolumn <- rep(c("J_ml_x1","J_ml_y1", "J_ml_z1"), length = 2337)
-JW_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-JW_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+B_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(B_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+B_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+B_MorphoData_ManualMap$sourcecolumn <- rep(c("B_ml_x1","B_ml_y1", "B_ml_z1"), length = 2337)
+B_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+B_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(JW_MorphoData_ManualMap)){JW_MorphoData_Manual_1[JW_MorphoData_ManualMap[i,3], JW_MorphoData_ManualMap[i,4]] <- landmarks[JW_MorphoData_ManualMap[i,1], JW_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(B_MorphoData_ManualMap)){B_MorphoData_Manual_1[B_MorphoData_ManualMap[i,3], B_MorphoData_ManualMap[i,4]] <- landmarks[B_MorphoData_ManualMap[i,1], B_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-JW_MorphoData_Manual_1 <- as.matrix(JW_MorphoData_Manual_1)
+B_MorphoData_Manual_1 <- as.matrix(B_MorphoData_Manual_1)
 ```
-####JW Iteration 2
+####B Iteration 2
 Make empty dataframe to store landmarks
 ```{r}
-JW_MorphoData_Manual_2 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(JW_MorphoData_Manual_2) <- paste(unique(landmarks$ID), "_JW_ML_2", sep = "")
-colnames(JW_MorphoData_Manual_2) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+B_MorphoData_Manual_2 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(B_MorphoData_Manual_2) <- paste(unique(landmarks$ID), "_B_ML_2", sep = "")
+colnames(B_MorphoData_Manual_2) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-JW_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(JW_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-JW_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-JW_MorphoData_ManualMap$sourcecolumn <- rep(c("J_ml_x2","J_ml_y2", "J_ml_z2"), length = 2337)
-JW_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-JW_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+B_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(B_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+B_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+B_MorphoData_ManualMap$sourcecolumn <- rep(c("B_ml_x2","B_ml_y2", "B_ml_z2"), length = 2337)
+B_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+B_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(JW_MorphoData_ManualMap)){JW_MorphoData_Manual_2[JW_MorphoData_ManualMap[i,3], JW_MorphoData_ManualMap[i,4]] <- landmarks[JW_MorphoData_ManualMap[i,1], JW_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(B_MorphoData_ManualMap)){B_MorphoData_Manual_2[B_MorphoData_ManualMap[i,3], B_MorphoData_ManualMap[i,4]] <- landmarks[B_MorphoData_ManualMap[i,1], B_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-JW_MorphoData_Manual_2 <- as.matrix(JW_MorphoData_Manual_2)
+B_MorphoData_Manual_2 <- as.matrix(B_MorphoData_Manual_2)
 ```
-####JW Iteration 3
+####B Iteration 3
 Make empty dataframe to store landmarks
 ```{r}
-JW_MorphoData_Manual_3 <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(JW_MorphoData_Manual_3) <- paste(unique(landmarks$ID), "_JW_ML_3", sep = "")
-colnames(JW_MorphoData_Manual_3) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+B_MorphoData_Manual_3 <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(B_MorphoData_Manual_3) <- paste(unique(landmarks$ID), "_B_ML_3", sep = "")
+colnames(B_MorphoData_Manual_3) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-JW_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(JW_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-JW_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-JW_MorphoData_ManualMap$sourcecolumn <- rep(c("J_ml_x3","J_ml_y3", "J_ml_z3"), length = 2337)
-JW_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-JW_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+B_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(B_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+B_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+B_MorphoData_ManualMap$sourcecolumn <- rep(c("B_ml_x3","B_ml_y3", "B_ml_z3"), length = 2337)
+B_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+B_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(JW_MorphoData_ManualMap)){JW_MorphoData_Manual_3[JW_MorphoData_ManualMap[i,3], JW_MorphoData_ManualMap[i,4]] <- landmarks[JW_MorphoData_ManualMap[i,1], JW_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(B_MorphoData_ManualMap)){B_MorphoData_Manual_3[B_MorphoData_ManualMap[i,3], B_MorphoData_ManualMap[i,4]] <- landmarks[B_MorphoData_ManualMap[i,1], B_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-JW_MorphoData_Manual_3 <- as.matrix(JW_MorphoData_Manual_3)
+B_MorphoData_Manual_3 <- as.matrix(B_MorphoData_Manual_3)
 ```
-####JW average
+####B average
 Make empty dataframe to store landmarks
 ```{r}
-JW_MorphoData_Manual_avg <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(JW_MorphoData_Manual_avg) <- paste(unique(landmarks$ID), "_JW_ML_avg", sep = "")
-colnames(JW_MorphoData_Manual_avg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+B_MorphoData_Manual_avg <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(B_MorphoData_Manual_avg) <- paste(unique(landmarks$ID), "_B_ML_avg", sep = "")
+colnames(B_MorphoData_Manual_avg) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-JW_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(JW_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-JW_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-JW_MorphoData_ManualMap$sourcecolumn <- rep(c("J_ml_avgx","J_ml_avgy", "J_ml_avgz"), length = 2337)
-JW_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-JW_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+B_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(B_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+B_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+B_MorphoData_ManualMap$sourcecolumn <- rep(c("B_ml_avgx","B_ml_avgy", "B_ml_avgz"), length = 2337)
+B_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+B_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(JW_MorphoData_ManualMap)){JW_MorphoData_Manual_avg[JW_MorphoData_ManualMap[i,3], JW_MorphoData_ManualMap[i,4]] <- landmarks[JW_MorphoData_ManualMap[i,1], JW_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(B_MorphoData_ManualMap)){B_MorphoData_Manual_avg[B_MorphoData_ManualMap[i,3], B_MorphoData_ManualMap[i,4]] <- landmarks[B_MorphoData_ManualMap[i,1], B_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-JW_MorphoData_Manual_avg <- as.matrix(JW_MorphoData_Manual_avg)
+B_MorphoData_Manual_avg <- as.matrix(B_MorphoData_Manual_avg)
 ```
-###Both manual landmarks
+###C manual landmarks
 Make empty dataframe to store landmarks
 ```{r}
-Both_MorphoData_Manual <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(Both_MorphoData_Manual) <- paste(unique(landmarks$ID), "_both_ML_avg", sep = "")
-colnames(Both_MorphoData_Manual) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+C_MorphoData_Manual <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(C_MorphoData_Manual) <- paste(unique(landmarks$ID), "_C_ML_avg", sep = "")
+colnames(C_MorphoData_Manual) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-Both_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(Both_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-Both_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
-Both_MorphoData_ManualMap$sourcecolumn <- rep(c("B_ml_avgx","B_ml_avgy", "B_ml_avgz"), length = 2337)
-Both_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
-Both_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+C_MorphoData_ManualMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(C_MorphoData_ManualMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+C_MorphoData_ManualMap$sourcerow <- rep(seq(1,779,1), each=3) 
+C_MorphoData_ManualMap$sourcecolumn <- rep(c("C_ml_avgx","C_ml_avgy", "C_ml_avgz"), length = 2337)
+C_MorphoData_ManualMap$targetrow <- rep(seq(1,41,1), each = 57)
+C_MorphoData_ManualMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(Both_MorphoData_ManualMap)){Both_MorphoData_Manual[Both_MorphoData_ManualMap[i,3], Both_MorphoData_ManualMap[i,4]] <- landmarks[Both_MorphoData_ManualMap[i,1], Both_MorphoData_ManualMap[i,2]]
+for (i in 1:nrow(C_MorphoData_ManualMap)){C_MorphoData_Manual[C_MorphoData_ManualMap[i,3], C_MorphoData_ManualMap[i,4]] <- landmarks[C_MorphoData_ManualMap[i,1], C_MorphoData_ManualMap[i,2]]
 }
 
 rm(i)
 
-Both_MorphoData_Manual <- as.matrix(Both_MorphoData_Manual)
+C_MorphoData_Manual <- as.matrix(C_MorphoData_Manual)
 ```
 
 ##Convert the automatic landmarks into morpho format
-###AZ Auto
+###A Auto
 Make empty dataframe to store landmarks
 ```{r}
-AZ_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(AZ_MorphoData_Auto) <- paste(unique(landmarks$ID), "_AZ_Auto", sep = "")
-colnames(AZ_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+A_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(A_MorphoData_Auto) <- paste(unique(landmarks$ID), "_A_Auto", sep = "")
+colnames(A_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-AZ_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(AZ_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-AZ_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
-AZ_MorphoData_AutoMap$sourcecolumn <- rep(c("A_loo_x","A_loo_y","A_loo_z"), length = 2337)
-AZ_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
-AZ_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+A_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(A_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+A_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+A_MorphoData_AutoMap$sourcecolumn <- rep(c("A_loo_x","A_loo_y","A_loo_z"), length = 2337)
+A_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+A_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(AZ_MorphoData_AutoMap)){AZ_MorphoData_Auto[AZ_MorphoData_AutoMap[i,3], AZ_MorphoData_AutoMap[i,4]] <- landmarks[AZ_MorphoData_AutoMap[i,1], AZ_MorphoData_AutoMap[i,2]]
+for (i in 1:nrow(A_MorphoData_AutoMap)){A_MorphoData_Auto[A_MorphoData_AutoMap[i,3], A_MorphoData_AutoMap[i,4]] <- landmarks[A_MorphoData_AutoMap[i,1], A_MorphoData_AutoMap[i,2]]
 }
 
 rm(i)
 
-AZ_MorphoData_Auto <- as.matrix(AZ_MorphoData_Auto)
+A_MorphoData_Auto <- as.matrix(A_MorphoData_Auto)
 ```
-###JW Auto
+###B Auto
 Make empty dataframe to store landmarks
 ```{r}
-JW_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(JW_MorphoData_Auto) <- paste(unique(landmarks$ID), "_JW_Auto", sep = "")
-colnames(JW_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+B_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(B_MorphoData_Auto) <- paste(unique(landmarks$ID), "_B_Auto", sep = "")
+colnames(B_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-JW_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(JW_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-JW_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
-JW_MorphoData_AutoMap$sourcecolumn <- rep(c("J_loo_x","J_loo_y","J_loo_z"), length = 2337)
-JW_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
-JW_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+B_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(B_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+B_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+B_MorphoData_AutoMap$sourcecolumn <- rep(c("B_loo_x","B_loo_y","B_loo_z"), length = 2337)
+B_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+B_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(JW_MorphoData_AutoMap)){JW_MorphoData_Auto[JW_MorphoData_AutoMap[i,3], JW_MorphoData_AutoMap[i,4]] <- landmarks[JW_MorphoData_AutoMap[i,1], JW_MorphoData_AutoMap[i,2]]
+for (i in 1:nrow(B_MorphoData_AutoMap)){B_MorphoData_Auto[B_MorphoData_AutoMap[i,3], B_MorphoData_AutoMap[i,4]] <- landmarks[B_MorphoData_AutoMap[i,1], B_MorphoData_AutoMap[i,2]]
 }
 
 rm(i)
 
-JW_MorphoData_Auto <- as.matrix(JW_MorphoData_Auto)
+B_MorphoData_Auto <- as.matrix(B_MorphoData_Auto)
 ```
-###Both auto
+###C auto
 Make empty dataframe to store landmarks
 ```{r}
-Both_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
-rownames(Both_MorphoData_Auto) <- paste(unique(landmarks$ID), "_both_Auto", sep = "")
-colnames(Both_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
+C_MorphoData_Auto <- as.data.frame(matrix(nrow = 41, ncol = 57))
+rownames(C_MorphoData_Auto) <- paste(unique(landmarks$ID), "_C_Auto", sep = "")
+colnames(C_MorphoData_Auto) <- paste(rep(unique(landmarks$LM.Num), each=3), c("_x", "_y", "_z"), sep="")
 ```
 Make map linking the old dataframe with the new one
 ```{r}
-Both_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
-colnames(Both_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
-Both_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
-Both_MorphoData_AutoMap$sourcecolumn <- rep(c("B_loo_x", "B_loo_y", "B_loo_z"), length = 2337)
-Both_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
-Both_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
+C_MorphoData_AutoMap <- as.data.frame(matrix(nrow=2337, ncol=4))
+colnames(C_MorphoData_AutoMap) <- c('sourcerow', 'sourcecolumn', 'targetrow', 'targetcolumn')
+C_MorphoData_AutoMap$sourcerow <- rep(seq(1,779,1), each=3) 
+C_MorphoData_AutoMap$sourcecolumn <- rep(c("C_loo_x", "C_loo_y", "C_loo_z"), length = 2337)
+C_MorphoData_AutoMap$targetrow <- rep(seq(1,41,1), each = 57)
+C_MorphoData_AutoMap$targetcolumn <- rep(seq(1,57,1), length = 2337)
 ```
 Populate the new dataframe
 ```{r}
-for (i in 1:nrow(Both_MorphoData_AutoMap)){Both_MorphoData_Auto[Both_MorphoData_AutoMap[i,3], Both_MorphoData_AutoMap[i,4]] <- landmarks[Both_MorphoData_AutoMap[i,1], Both_MorphoData_AutoMap[i,2]]
+for (i in 1:nrow(C_MorphoData_AutoMap)){C_MorphoData_Auto[C_MorphoData_AutoMap[i,3], C_MorphoData_AutoMap[i,4]] <- landmarks[C_MorphoData_AutoMap[i,1], C_MorphoData_AutoMap[i,2]]
 }
 
 rm(i)
 
-Both_MorphoData_Auto <- as.matrix(Both_MorphoData_Auto)
+C_MorphoData_Auto <- as.matrix(C_MorphoData_Auto)
 ```
 #All the manovas
 ##Manova of manual landmarks only with individual, observer, and iteration as covariates
@@ -824,342 +755,323 @@ I would have liked to include camera as a covariate too, but because of the non 
 
 Combine manual landmark iteration data together
 ```{r}
-AJ_MorphoData_Manual <- rbind(AZ_MorphoData_Manual_1, AZ_MorphoData_Manual_2, AZ_MorphoData_Manual_3, JW_MorphoData_Manual_1, JW_MorphoData_Manual_2, JW_MorphoData_Manual_3)
+AB_MorphoData_Manual <- rbind(A_MorphoData_Manual_1, A_MorphoData_Manual_2, A_MorphoData_Manual_3, B_MorphoData_Manual_1, B_MorphoData_Manual_2, B_MorphoData_Manual_3)
 ```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
-AJ_Manual_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_Manual), ncol=4))
-colnames(AJ_Manual_Groups) <- c("ID", "StudyID", "Observer", "Iteration")
-AJ_Manual_Groups$ID <- rownames(AJ_MorphoData_Manual)
-AJ_Manual_Groups$StudyID <- as.factor(unique(landmarks$ID))
-AJ_Manual_Groups$Iteration <- as.factor(c(rep("1", each=41), rep("2", each=41), rep("3", each=41)))
-AJ_Manual_Groups$Observer <- as.factor(c(rep("AZ", each=123), rep("JW", each=123)))
+AB_Manual_Groups <- as.data.frame(matrix(nrow=nrow(AB_MorphoData_Manual), ncol=4))
+colnames(AB_Manual_Groups) <- c("ID", "StudyID", "Observer", "Iteration")
+AB_Manual_Groups$ID <- rownames(AB_MorphoData_Manual)
+AB_Manual_Groups$StudyID <- as.factor(unique(landmarks$ID))
+AB_Manual_Groups$Iteration <- as.factor(c(rep("1", each=41), rep("2", each=41), rep("3", each=41)))
+AB_Manual_Groups$Observer <- as.factor(c(rep("A", each=123), rep("B", each=123)))
 ```
 GPA align
 ```{r}
-AJ_Morpho_Manual <- arrayspecs(A=AJ_MorphoData_Manual, p = 19, k = 3)
-AJ_Morpho_Manual.gpa <- gpagen(A=AJ_Morpho_Manual, print.progress = FALSE)
+AB_Morpho_Manual <- arrayspecs(A=AB_MorphoData_Manual, p = 19, k = 3)
+AB_Morpho_Manual.gpa <- gpagen(A=AB_Morpho_Manual, print.progress = FALSE)
 ```
 Plot outliers
 ```{r}
-plotOutliers(AJ_Morpho_Manual.gpa$coords)
-plotAllSpecimens(AJ_Morpho_Manual.gpa$coords)
+plotOutliers(AB_Morpho_Manual.gpa$coords)
+plotAllSpecimens(AB_Morpho_Manual.gpa$coords)
 ```
 No outliers
 Make geomorph dataframe 
 ```{r}
-AJ_Manual_GDF <- geomorph.data.frame(shape = AJ_Morpho_Manual.gpa$coords, individual = AJ_Manual_Groups$StudyID, observer = AJ_Manual_Groups$Observer, iteration = AJ_Manual_Groups$Iteration)
+AB_Manual_GDF <- geomorph.data.frame(shape = AB_Morpho_Manual.gpa$coords, individual = AB_Manual_Groups$StudyID, observer = AB_Manual_Groups$Observer, iteration = AB_Manual_Groups$Iteration)
 
-AJ_Morpho_Manual.manova <- procD.lm(f1 = shape ~ individual+observer*individual+observer/iteration, data = AJ_Manual_GDF, RRPP=TRUE, iter = 999, print.progress=FALSE)
-summary(AJ_Morpho_Manual.manova)
+AB_Morpho_Manual.manova <- procD.lm(f1 = shape ~ individual+observer*individual+observer/iteration, data = AB_Manual_GDF, RRPP=TRUE, iter = 999, print.progress=FALSE)
+summary(AB_Morpho_Manual.manova)
 ```
 ```{r}
-plot(AJ_Morpho_Manual.manova, type = "diagnostics", outliers = TRUE)
+plot(AB_Morpho_Manual.manova, type = "diagnostics", outliers = TRUE)
 ```
 
-##Manoca of manual average landmarks with individual and observer as covariates
+##Manova of manual average landmarks with individual and observer as covariates
 ```{r}
-AJ_MorphoData_ManualAvg <- rbind(AZ_MorphoData_Manual_avg, JW_MorphoData_Manual_avg)
+AB_MorphoData_ManualAvg <- rbind(A_MorphoData_Manual_avg, B_MorphoData_Manual_avg)
 ```
 ```{r}
-AJ_ManualAvg_Groups <- as.data.frame(matrix(nrow = nrow(AJ_MorphoData_ManualAvg), ncol = 3))
-colnames(AJ_ManualAvg_Groups) <- c("ID", "StudyID", "Observer")
-AJ_ManualAvg_Groups$ID <- rownames(AJ_MorphoData_ManualAvg)
-AJ_ManualAvg_Groups$StudyID <- as.factor(unique(landmarks$ID))
-AJ_ManualAvg_Groups$Observer <- as.factor(c(rep("AZ", each=41), rep("JW", each=41)))
+AB_ManualAvg_Groups <- as.data.frame(matrix(nrow = nrow(AB_MorphoData_ManualAvg), ncol = 3))
+colnames(AB_ManualAvg_Groups) <- c("ID", "StudyID", "Observer")
+AB_ManualAvg_Groups$ID <- rownames(AB_MorphoData_ManualAvg)
+AB_ManualAvg_Groups$StudyID <- as.factor(unique(landmarks$ID))
+AB_ManualAvg_Groups$Observer <- as.factor(c(rep("A", each=41), rep("B", each=41)))
 ```
 ```{r}
-AJ_Morpho_ManualAvg <- arrayspecs(A=AJ_MorphoData_ManualAvg, p=19, k=3)
-AJ_Morpho_ManualAvg.gpa <- gpagen(A=AJ_Morpho_ManualAvg, print.progress = FALSE)
+AB_Morpho_ManualAvg <- arrayspecs(A=AB_MorphoData_ManualAvg, p=19, k=3)
+AB_Morpho_ManualAvg.gpa <- gpagen(A=AB_Morpho_ManualAvg, print.progress = FALSE)
 ```
 ```{r}
-plotOutliers(AJ_Morpho_ManualAvg.gpa$coords)
-plotAllSpecimens(AJ_Morpho_ManualAvg.gpa$coords)
+plotOutliers(AB_Morpho_ManualAvg.gpa$coords)
+plotAllSpecimens(AB_Morpho_ManualAvg.gpa$coords)
 ```
 ```{r}
-AJ_ManualAvg_GDF <- geomorph.data.frame(shape = AJ_Morpho_ManualAvg.gpa$coords, individual = AJ_ManualAvg_Groups$StudyID, observer = AJ_ManualAvg_Groups$Observer)
+AB_ManualAvg_GDF <- geomorph.data.frame(shape = AB_Morpho_ManualAvg.gpa$coords, individual = AB_ManualAvg_Groups$StudyID, observer = AB_ManualAvg_Groups$Observer)
 
-AJ_Morpho_ManualAvg.manova <- procD.lm(shape~observer+individual, data = AJ_ManualAvg_GDF, print.progress = FALSE)
-summary(AJ_Morpho_ManualAvg.manova)
+AB_Morpho_ManualAvg.manova <- procD.lm(shape~individual+observer, data = AB_ManualAvg_GDF, print.progress = FALSE)
+summary(AB_Morpho_ManualAvg.manova)
 ```
 ```{r}
-plot(AJ_Morpho_ManualAvg.manova, type = "diagnostics", outliers = TRUE)
+plot(AB_Morpho_ManualAvg.manova, type = "diagnostics", outliers = TRUE)
 ```
 
 ##Manova of auto landmarks with individual and observer as covariates.
 ```{r}
-AJ_MorphoData_Auto <- rbind(AZ_MorphoData_Auto, JW_MorphoData_Auto)
+AB_MorphoData_Auto <- rbind(A_MorphoData_Auto, B_MorphoData_Auto)
 ```
 Make groups dataframe containing covariates
 ```{r}
-AJ_Auto_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_Auto), ncol=3))
-colnames(AJ_Auto_Groups) <- c("ID", "StudyID", "Observer")
-AJ_Auto_Groups$ID <- rownames(AJ_MorphoData_Auto)
-AJ_Auto_Groups$StudyID <- as.factor(unique(landmarks$ID))
-AJ_Auto_Groups$Observer <- as.factor(c(rep("AZ", each=41), rep("JW", each=41)))
+AB_Auto_Groups <- as.data.frame(matrix(nrow=nrow(AB_MorphoData_Auto), ncol=3))
+colnames(AB_Auto_Groups) <- c("ID", "StudyID", "Observer")
+AB_Auto_Groups$ID <- rownames(AB_MorphoData_Auto)
+AB_Auto_Groups$StudyID <- as.factor(unique(landmarks$ID))
+AB_Auto_Groups$Observer <- as.factor(c(rep("A", each=41), rep("B", each=41)))
 ```
 GPA align 
 ```{r}
-AJ_Morpho_Auto <- arrayspecs(A=AJ_MorphoData_Auto, p=19, k=3)
-AJ_Morpho_Auto.gpa <- gpagen(A=AJ_Morpho_Auto, print.progress = FALSE)
+AB_Morpho_Auto <- arrayspecs(A=AB_MorphoData_Auto, p=19, k=3)
+AB_Morpho_Auto.gpa <- gpagen(A=AB_Morpho_Auto, print.progress = FALSE)
 ```
 Plot outliers
 ```{r}
-plotOutliers(AJ_Morpho_Auto.gpa$coords)
-plotAllSpecimens(AJ_Morpho_Auto.gpa$coords)
+plotOutliers(AB_Morpho_Auto.gpa$coords)
+plotAllSpecimens(AB_Morpho_Auto.gpa$coords)
 ```
 Make geomorph dataframe and run manova
 ```{r}
-AJ_Auto_GDF <- geomorph.data.frame(shape = AJ_Morpho_Auto.gpa$coords, individual = AJ_Auto_Groups$StudyID, observer=AJ_Auto_Groups$Observer)
+AB_Auto_GDF <- geomorph.data.frame(shape = AB_Morpho_Auto.gpa$coords, individual = AB_Auto_Groups$StudyID, observer=AB_Auto_Groups$Observer)
 
-AJ_Morpho_Auto.manova <- procD.lm(shape~observer+individual, data = AJ_Auto_GDF, print.progress=FALSE)
-summary(AJ_Morpho_Auto.manova)
+AB_Morpho_Auto.manova <- procD.lm(shape~individual+observer, data = AB_Auto_GDF, print.progress=FALSE)
+summary(AB_Morpho_Auto.manova)
 ```
 ```{r}
-plot(AJ_Morpho_Auto.manova, type = "diagnostics", outliers = TRUE)
+plot(AB_Morpho_Auto.manova, type = "diagnostics", outliers = TRUE)
 ```
-##Compare manual vs automatic using manova on "Both" data, with individual and method as covariates. 
+##Compare manual vs automatic using manova on "C" data, with individual and method as covariates. 
 Combine manual and automatic data together
 ```{r}
-Both_MorphoData_MLvsAuto <- rbind(Both_MorphoData_Manual, Both_MorphoData_Auto)
+C_MorphoData_MLvsAuto <- rbind(C_MorphoData_Manual, C_MorphoData_Auto)
 ```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
-Both_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(Both_MorphoData_MLvsAuto), ncol=3))
-colnames(Both_MLvsAuto_Groups) <- c("ID", "StudyID", "Method")
-Both_MLvsAuto_Groups$ID <- rownames(Both_MorphoData_MLvsAuto)
-Both_MLvsAuto_Groups$StudyID <- as.factor(unique(landmarks$ID))
-Both_MLvsAuto_Groups$Method <- as.factor(c(rep("ML", each=41), rep("Auto", each=41)))
+C_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(C_MorphoData_MLvsAuto), ncol=3))
+colnames(C_MLvsAuto_Groups) <- c("ID", "StudyID", "Method")
+C_MLvsAuto_Groups$ID <- rownames(C_MorphoData_MLvsAuto)
+C_MLvsAuto_Groups$StudyID <- as.factor(unique(landmarks$ID))
+C_MLvsAuto_Groups$Method <- as.factor(c(rep("ML", each=41), rep("Auto", each=41)))
 ```
 GPA align manual and automatic landmark iterations. 
 ```{r}
-Both_Morpho_MLvsAuto <- arrayspecs(A=Both_MorphoData_MLvsAuto, p = 19, k = 3)
-Both_Morpho_MLvsAuto.gpa <- gpagen(A=Both_Morpho_MLvsAuto, print.progress = FALSE)
+C_Morpho_MLvsAuto <- arrayspecs(A=C_MorphoData_MLvsAuto, p = 19, k = 3)
+C_Morpho_MLvsAuto.gpa <- gpagen(A=C_Morpho_MLvsAuto, print.progress = FALSE)
 ```
 Plot outliers
 ```{r}
-plotOutliers(Both_Morpho_MLvsAuto.gpa$coords)
-plotAllSpecimens(Both_Morpho_MLvsAuto.gpa$coords)
+plotOutliers(C_Morpho_MLvsAuto.gpa$coords)
+plotAllSpecimens(C_Morpho_MLvsAuto.gpa$coords)
 ```
 Make geomorph dataframe and run manova
 ```{r}
-Both_MLvsAuto_GDF <- geomorph.data.frame(shape = Both_Morpho_MLvsAuto.gpa$coords, individual = Both_MLvsAuto_Groups$StudyID,  method = Both_MLvsAuto_Groups$Method)
+C_MLvsAuto_GDF <- geomorph.data.frame(shape = C_Morpho_MLvsAuto.gpa$coords, individual = C_MLvsAuto_Groups$StudyID,  method = C_MLvsAuto_Groups$Method)
 
-Both_Morpho_MLvsAuto.manova <- procD.lm(shape ~ method+individual, data = Both_MLvsAuto_GDF, print.progress=FALSE)
-summary(Both_Morpho_MLvsAuto.manova)
+C_Morpho_MLvsAuto.manova <- procD.lm(shape ~ method+individual, data = C_MLvsAuto_GDF, print.progress=FALSE)
+summary(C_Morpho_MLvsAuto.manova)
 ```
 ```{r}
-plot(Both_Morpho_MLvsAuto.manova, type = "diagnostics", outliers = TRUE)
+plot(C_Morpho_MLvsAuto.manova, type = "diagnostics", outliers = TRUE)
 ```
 
-##Compare manual vs automatic using manova on AZ / JW trained data with individual, observer, and method as covariates
+##Compare manual vs automatic using manova on A / B trained data with individual, observer, and method as covariates
 ```{r}
-AJ_MorphoData_MLvsAuto <- rbind(AZ_MorphoData_Manual_avg, JW_MorphoData_Manual_avg, AZ_MorphoData_Auto, JW_MorphoData_Auto)
+AB_MorphoData_MLvsAuto <- rbind(A_MorphoData_Manual_avg, B_MorphoData_Manual_avg, A_MorphoData_Auto, B_MorphoData_Auto)
 ```
 Groups dataframe that has sample information for combined manual landmarking data 
 ```{r}
-AJ_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(AJ_MorphoData_MLvsAuto), ncol=4))
-colnames(AJ_MLvsAuto_Groups) <- c("ID", "StudyID", "Method", "Observer")
-AJ_MLvsAuto_Groups$ID <- rownames(AJ_MorphoData_MLvsAuto)
-AJ_MLvsAuto_Groups$StudyID <- as.factor(unique(landmarks$ID))
-AJ_MLvsAuto_Groups$Method <- as.factor(c(rep("ML", each=82), rep("Auto", each=82)))
-AJ_MLvsAuto_Groups$Observer <- as.factor(c(rep("AZ", each=41), rep("JW", each=41)))
+AB_MLvsAuto_Groups <- as.data.frame(matrix(nrow=nrow(AB_MorphoData_MLvsAuto), ncol=4))
+colnames(AB_MLvsAuto_Groups) <- c("ID", "StudyID", "Method", "Observer")
+AB_MLvsAuto_Groups$ID <- rownames(AB_MorphoData_MLvsAuto)
+AB_MLvsAuto_Groups$StudyID <- as.factor(unique(landmarks$ID))
+AB_MLvsAuto_Groups$Method <- as.factor(c(rep("ML", each=82), rep("Auto", each=82)))
+AB_MLvsAuto_Groups$Observer <- as.factor(c(rep("A", each=41), rep("B", each=41)))
 ```
 GPA align manual and automatic landmark iterations
 ```{r}
-AJ_Morpho_MLvsAuto <- arrayspecs(A=AJ_MorphoData_MLvsAuto, p = 19, k = 3)
-AJ_Morpho_MLvsAuto.gpa <- gpagen(A=AJ_Morpho_MLvsAuto, print.progress = FALSE)
+AB_Morpho_MLvsAuto <- arrayspecs(A=AB_MorphoData_MLvsAuto, p = 19, k = 3)
+AB_Morpho_MLvsAuto.gpa <- gpagen(A=AB_Morpho_MLvsAuto, print.progress = FALSE)
 ```
 Plot outliers
 ```{r}
-plotOutliers(AJ_Morpho_MLvsAuto.gpa$coords)
-plotAllSpecimens(AJ_Morpho_MLvsAuto.gpa$coords)
+plotOutliers(AB_Morpho_MLvsAuto.gpa$coords)
+plotAllSpecimens(AB_Morpho_MLvsAuto.gpa$coords)
 ```
 Make geomorph dataframe 
 ```{r}
-AJ_MLvsAuto_GDF <- geomorph.data.frame(shape = AJ_Morpho_MLvsAuto.gpa$coords, individual = AJ_MLvsAuto_Groups$StudyID, method = AJ_MLvsAuto_Groups$Method, observer=AJ_MLvsAuto_Groups$Observer)
+AB_MLvsAuto_GDF <- geomorph.data.frame(shape = AB_Morpho_MLvsAuto.gpa$coords, individual = AB_MLvsAuto_Groups$StudyID, method = AB_MLvsAuto_Groups$Method, observer=AB_MLvsAuto_Groups$Observer)
 
-AJ_Morpho_MLvsAuto.manova <- procD.lm(shape~method+observer*individual, data = AJ_MLvsAuto_GDF, print.progress = F)
-summary(AJ_Morpho_MLvsAuto.manova)
+AB_Morpho_MLvsAuto.manova <- procD.lm(shape~method+individual*observer, data = AB_MLvsAuto_GDF, print.progress = F)
+summary(AB_Morpho_MLvsAuto.manova)
 ```
 ```{r}
-plot(AJ_Morpho_MLvsAuto.manova, type = "diagnostic", outliers = TRUE)
+plot(AB_Morpho_MLvsAuto.manova, type = "diagnostic", outliers = TRUE)
 ```
 
 #Two-block partial least squares
 Two-block partial least squares to assess the degree of association between two blocks of Prorustes-aligned coordinates. 
-###AZ manual and automatic data
+###A manual and automatic data
 GPA align manual and automatic landmark iterations separately
 ```{r}
 #Manual
-AZ_Morpho_Manual <- arrayspecs(A=AZ_MorphoData_Manual_avg, p = 19, k = 3)
+A_Morpho_Manual <- arrayspecs(A=A_MorphoData_Manual_avg, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(AZ_Morpho_Manual)[[3]] <- unique(landmarks$ID)
-AZ_Morpho_Manual.gpa <- gpagen(A=AZ_Morpho_Manual, print.progress = FALSE)
+dimnames(A_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+A_Morpho_Manual.gpa <- gpagen(A=A_Morpho_Manual, print.progress = FALSE)
 #Automatic
-AZ_Morpho_Auto <- arrayspecs(A=AZ_MorphoData_Auto, p = 19, k = 3)
+A_Morpho_Auto <- arrayspecs(A=A_MorphoData_Auto, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(AZ_Morpho_Auto)[[3]] <- unique(landmarks$ID)
-AZ_Morpho_Auto.gpa <- gpagen(A=AZ_Morpho_Auto, print.progress = FALSE)
+dimnames(A_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+A_Morpho_Auto.gpa <- gpagen(A=A_Morpho_Auto, print.progress = FALSE)
 ```
 Plot outliers in manual data
 ```{r}
-plotOutliers(AZ_Morpho_Manual.gpa$coords)
+plotOutliers(A_Morpho_Manual.gpa$coords)
 ```
 Plot outliers in automatic data
 ```{r}
-plotOutliers(AZ_Morpho_Auto.gpa$coords)
+plotOutliers(A_Morpho_Auto.gpa$coords)
 ```
 Run the pls
 ```{r}
-AZ_PLS <- two.b.pls(AZ_Morpho_Manual.gpa$coords, AZ_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
-summary(AZ_PLS)
+A_PLS <- two.b.pls(A_Morpho_Manual.gpa$coords, A_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(A_PLS)
 ```
 Plot the pls
 ```{r}
-plot(AZ_PLS, warpgrids = FALSE)
+plot(A_PLS, warpgrids = FALSE)
 ```
 Variance explained by each one of the PLS PCs.
 ```{r}
-plot(AZ_PLS$svd$d^2/sum(AZ_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+plot(A_PLS$svd$d^2/sum(A_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
     ylab = "variance explained")
 ```
 Plot first PC scores against each other
 ```{r}
-plot(AZ_PLS$A1.matrix[,1], AZ_PLS$A2.matrix[,1])
-plot(AZ_PLS$A1.matrix[,2], AZ_PLS$A2.matrix[,2])
-plot(AZ_PLS$A1.matrix[,3], AZ_PLS$A2.matrix[,3])
-plot(AZ_PLS$A1.matrix[,4], AZ_PLS$A2.matrix[,4])
-plot(AZ_PLS$A1.matrix[,5], AZ_PLS$A2.matrix[,5])
-plot(AZ_PLS$A1.matrix[,6], AZ_PLS$A2.matrix[,6])
+plot(A_PLS$A1.matrix[,1], A_PLS$A2.matrix[,1])
+plot(A_PLS$A1.matrix[,2], A_PLS$A2.matrix[,2])
+plot(A_PLS$A1.matrix[,3], A_PLS$A2.matrix[,3])
+plot(A_PLS$A1.matrix[,4], A_PLS$A2.matrix[,4])
+plot(A_PLS$A1.matrix[,5], A_PLS$A2.matrix[,5])
+plot(A_PLS$A1.matrix[,6], A_PLS$A2.matrix[,6])
 ```
-###Julie
+###B
 GPA align manual and automatic landmark iterations separately
 ```{r}
 #Manual
-JW_Morpho_Manual <- arrayspecs(A=JW_MorphoData_Manual_avg, p = 19, k = 3)
+B_Morpho_Manual <- arrayspecs(A=B_MorphoData_Manual_avg, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(JW_Morpho_Manual)[[3]] <- unique(landmarks$ID)
-JW_Morpho_Manual.gpa <- gpagen(A=JW_Morpho_Manual, print.progress = FALSE)
+dimnames(B_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+B_Morpho_Manual.gpa <- gpagen(A=B_Morpho_Manual, print.progress = FALSE)
 #Automatic
-JW_Morpho_Auto <- arrayspecs(A=JW_MorphoData_Auto, p = 19, k = 3)
+B_Morpho_Auto <- arrayspecs(A=B_MorphoData_Auto, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(JW_Morpho_Auto)[[3]] <- unique(landmarks$ID)
-JW_Morpho_Auto.gpa <- gpagen(A=JW_Morpho_Auto, print.progress = FALSE)
+dimnames(B_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+B_Morpho_Auto.gpa <- gpagen(A=B_Morpho_Auto, print.progress = FALSE)
 ```
 Plot outliers in manual data
 ```{r}
-plotOutliers(JW_Morpho_Manual.gpa$coords)
+plotOutliers(B_Morpho_Manual.gpa$coords)
 ```
 Plot outliers in auto data
 ```{r}
-plotOutliers(JW_Morpho_Auto.gpa$coords)
+plotOutliers(B_Morpho_Auto.gpa$coords)
 ```
 Run the pls
 ```{r}
-JW_PLS <- two.b.pls(JW_Morpho_Manual.gpa$coords, JW_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
-summary(JW_PLS)
+B_PLS <- two.b.pls(B_Morpho_Manual.gpa$coords, B_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(B_PLS)
 ```
 Plot the pls
 ```{r}
-plot(JW_PLS, warpgrids = FALSE)
+plot(B_PLS, warpgrids = FALSE)
 ```
 Variance explained by each one of the PLS PCs.
 ```{r}
-plot(JW_PLS$svd$d^2/sum(JW_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+plot(B_PLS$svd$d^2/sum(B_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
     ylab = "variance explained")
 ```
 Plot first PC scores against each other
 ```{r}
-plot(JW_PLS$A1.matrix[,1], JW_PLS$A2.matrix[,1])
-plot(JW_PLS$A1.matrix[,2], JW_PLS$A2.matrix[,2])
-plot(JW_PLS$A1.matrix[,3], JW_PLS$A2.matrix[,3])
-plot(JW_PLS$A1.matrix[,4], JW_PLS$A2.matrix[,4])
-plot(JW_PLS$A1.matrix[,5], JW_PLS$A2.matrix[,5])
-plot(JW_PLS$A1.matrix[,6], JW_PLS$A2.matrix[,6])
+plot(B_PLS$A1.matrix[,1], B_PLS$A2.matrix[,1])
+plot(B_PLS$A1.matrix[,2], B_PLS$A2.matrix[,2])
+plot(B_PLS$A1.matrix[,3], B_PLS$A2.matrix[,3])
+plot(B_PLS$A1.matrix[,4], B_PLS$A2.matrix[,4])
+plot(B_PLS$A1.matrix[,5], B_PLS$A2.matrix[,5])
+plot(B_PLS$A1.matrix[,6], B_PLS$A2.matrix[,6])
 ```
-###Both
+###C
 GPA align manual and automatic landmark iterations separately
 ```{r}
 #Manual
-Both_Morpho_Manual <- arrayspecs(A=Both_MorphoData_Manual, p = 19, k = 3)
+C_Morpho_Manual <- arrayspecs(A=C_MorphoData_Manual, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(Both_Morpho_Manual)[[3]] <- unique(landmarks$ID)
-Both_Morpho_Manual.gpa <- gpagen(A=Both_Morpho_Manual, print.progress = FALSE)
+dimnames(C_Morpho_Manual)[[3]] <- unique(landmarks$ID)
+C_Morpho_Manual.gpa <- gpagen(A=C_Morpho_Manual, print.progress = FALSE)
 #Automatic
-Both_Morpho_Auto <- arrayspecs(A=Both_MorphoData_Auto, p = 19, k = 3)
+C_Morpho_Auto <- arrayspecs(A=C_MorphoData_Auto, p = 19, k = 3)
 #Need to change the names to be matching for the PLS
-dimnames(Both_Morpho_Auto)[[3]] <- unique(landmarks$ID)
-Both_Morpho_Auto.gpa <- gpagen(A=Both_Morpho_Auto, print.progress = FALSE)
+dimnames(C_Morpho_Auto)[[3]] <- unique(landmarks$ID)
+C_Morpho_Auto.gpa <- gpagen(A=C_Morpho_Auto, print.progress = FALSE)
 ```
 Plot outliers in manual data
 ```{r}
-plotOutliers(Both_Morpho_Manual.gpa$coords)
+plotOutliers(C_Morpho_Manual.gpa$coords)
 ```
 Plot outliers in automatic data
 ```{r}
-plotOutliers(Both_Morpho_Auto.gpa$coords)
+plotOutliers(C_Morpho_Auto.gpa$coords)
 ```
 Run the pls
 ```{r}
-Both_PLS <- two.b.pls(Both_Morpho_Manual.gpa$coords, Both_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
-summary(Both_PLS)
+C_PLS <- two.b.pls(C_Morpho_Manual.gpa$coords, C_Morpho_Auto.gpa$coords, iter = 999, seed = NULL, print.progress = FALSE)
+summary(C_PLS)
 ```
 Plot the pls
 ```{r}
-plot(Both_PLS, warpgrids = FALSE)
+plot(C_PLS, warpgrids = FALSE)
 ```
 Variance explained by each one of the PLS PCs.
 ```{r}
-plot(Both_PLS$svd$d^2/sum(Both_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
+plot(C_PLS$svd$d^2/sum(C_PLS$svd$d^2), type = "b", pch = 16, xlab = "principal components", 
     ylab = "variance explained")
 ```
 Plot first PC scores against each other
 ```{r}
-plot(Both_PLS$A1.matrix[,1], Both_PLS$A2.matrix[,1])
-plot(Both_PLS$A1.matrix[,2], Both_PLS$A2.matrix[,2])
-plot(Both_PLS$A1.matrix[,3], Both_PLS$A2.matrix[,3])
-plot(Both_PLS$A1.matrix[,4], Both_PLS$A2.matrix[,4])
-plot(Both_PLS$A1.matrix[,5], Both_PLS$A2.matrix[,5])
-plot(Both_PLS$A1.matrix[,6], Both_PLS$A2.matrix[,6])
+plot(C_PLS$A1.matrix[,1], C_PLS$A2.matrix[,1])
+plot(C_PLS$A1.matrix[,2], C_PLS$A2.matrix[,2])
+plot(C_PLS$A1.matrix[,3], C_PLS$A2.matrix[,3])
+plot(C_PLS$A1.matrix[,4], C_PLS$A2.matrix[,4])
+plot(C_PLS$A1.matrix[,5], C_PLS$A2.matrix[,5])
+plot(C_PLS$A1.matrix[,6], C_PLS$A2.matrix[,6])
 ```
-
-##Plot the PLS
-```{r}
-PLS <- NULL
-PLS$AZ_Manual_PC1 <- AZ_PLS$A1.matrix[,1]
-PLS$AZ_Auto_PC1 <- AZ_PLS$A2.matrix[,1]
-PLS$JW_Manual_PC1 <- JW_PLS$A1.matrix[,1]
-PLS$JW_Auto_PC1 <- JW_PLS$A2.matrix[,1]
-PLS$Both_Manual_PC1 <- Both_PLS$A1.matrix[,1]
-PLS$Both_Auto_PC1 <- Both_PLS$A2.matrix[,1]
-PLS <- as.data.frame(PLS)
-
-multiplot(
-  ggplot(PLS, aes(AZ_Manual_PC1, AZ_Auto_PC1))+geom_point()+geom_smooth(method = "lm")+theme_bw()+ylab("Automatic")+xlab("Manual"),
-  ggplot(PLS, aes(JW_Manual_PC1, JW_Auto_PC1))+geom_point()+geom_smooth(method = "lm")+theme_bw()+ylab("Automatic")+xlab("Manual"),
-  ggplot(PLS, aes(Both_Manual_PC1, Both_Auto_PC1))+geom_point()+geom_smooth(method="lm")+theme_bw()+ylab("Automatic")+xlab("Manual"), 
-  cols = 3)
-```
-
 
 #Centroid size comparison
 Extract centroid size from each method
 ```{r}
 CentroidSizes <- as.data.frame(matrix(nrow = length(unique(landmarks$ID)), ncol = 7))
-colnames(CentroidSizes) <- c("ID", "A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto")
+colnames(CentroidSizes) <- c("ID", "A_Manual", "A_Auto", "B_Manual", "B_Auto", "C_Manual", "C_Auto")
 
 CentroidSizes$ID <- unique(landmarks$ID)
-CentroidSizes$A_Manual <- AZ_Morpho_Manual.gpa$Csize
-CentroidSizes$A_Auto <- AZ_Morpho_Auto.gpa$Csize
-CentroidSizes$J_Manual <- JW_Morpho_Manual.gpa$Csize
-CentroidSizes$J_Auto <- JW_Morpho_Auto.gpa$Csize
-CentroidSizes$B_Manual <- Both_Morpho_Manual.gpa$Csize
-CentroidSizes$B_Auto <- Both_Morpho_Auto.gpa$Csize
+CentroidSizes$A_Manual <- A_Morpho_Manual.gpa$Csize
+CentroidSizes$A_Auto <- A_Morpho_Auto.gpa$Csize
+CentroidSizes$B_Manual <- B_Morpho_Manual.gpa$Csize
+CentroidSizes$B_Auto <- B_Morpho_Auto.gpa$Csize
+CentroidSizes$C_Manual <- C_Morpho_Manual.gpa$Csize
+CentroidSizes$C_Auto <- C_Morpho_Auto.gpa$Csize
 ```
 Compare centroid sizes
 ```{r}
-ggpairs(data=CentroidSizes, columns=c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), title="Centroid Size Comparison")
+ggpairs(data=CentroidSizes, columns=c("A_Manual", "A_Auto", "B_Manual", "B_Auto", "C_Manual", "C_Auto"), title="Centroid Size Comparison")
 ```
 
 ###Bland-Altman for centroid sizes
@@ -1169,37 +1081,37 @@ ba_centroid_Adf <- as.data.frame(matrix(NA, nrow = 41))
 ba_centroid_Adf$means <- ba_centroid_A$means
 ba_centroid_Adf$diffs <- ba_centroid_A$diffs
 
-ba_centroid_Aplot <- ggplot(ba_centroid_Adf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "AZ", x="", y="Differences (mm)")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
-
-ba_centroid_J <- bland.altman.stats(CentroidSizes$J_Auto, CentroidSizes$J_Manual)
-ba_centroid_Jdf <- as.data.frame(matrix(NA, nrow = 41))
-ba_centroid_Jdf$means <- ba_centroid_J$means
-ba_centroid_Jdf$diffs <- ba_centroid_J$diffs
-
-ba_centroid_Jplot <- ggplot(ba_centroid_Jdf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "JW", x="Means (mm)", y="")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_centroid_Aplot <- ggplot(ba_centroid_Adf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "", x="", y="Differences (mm)")+geom_hline(yintercept = ba_centroid_A$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_A$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_centroid_A$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_A$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_A$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_A$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_A$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_A$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_A$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 
 ba_centroid_B <- bland.altman.stats(CentroidSizes$B_Auto, CentroidSizes$B_Manual)
 ba_centroid_Bdf <- as.data.frame(matrix(NA, nrow = 41))
 ba_centroid_Bdf$means <- ba_centroid_B$means
 ba_centroid_Bdf$diffs <- ba_centroid_B$diffs
 
-ba_centroid_Bplot <- ggplot(ba_centroid_Bdf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "B", x="", y="")+geom_hline(yintercept = ba_both_x$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_both_x$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_both_x$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+ba_centroid_Bplot <- ggplot(ba_centroid_Bdf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "", x="Means (mm)", y="")+geom_hline(yintercept = ba_centroid_B$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_B$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_centroid_B$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_B$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_B$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_B$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_B$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_B$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_B$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
+
+ba_centroid_C <- bland.altman.stats(CentroidSizes$C_Auto, CentroidSizes$C_Manual)
+ba_centroid_Cdf <- as.data.frame(matrix(NA, nrow = 41))
+ba_centroid_Cdf$means <- ba_centroid_C$means
+ba_centroid_Cdf$diffs <- ba_centroid_C$diffs
+
+ba_centroid_Cplot <- ggplot(ba_centroid_Cdf, aes(x=means, y=diffs))+geom_point(size = 0.5, alpha = 0.5)+ylim(-5,5)+theme_bw()+labs(title = "", x="", y="")+geom_hline(yintercept = ba_centroid_C$lines['lower.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_C$lines['mean.diffs'], linetype = "solid", color = "blue")+geom_hline(yintercept = ba_centroid_C$lines['upper.limit'], linetype = "solid", color = "red")+geom_hline(yintercept = ba_centroid_C$CI.lines['lower.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_C$CI.lines['lower.limit.ci.upper'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_C$CI.lines['mean.diff.ci.lower'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_C$CI.lines['mean.diff.ci.upper'], linetype = "dashed", color = "blue")+geom_hline(yintercept = ba_centroid_C$CI.lines['upper.limit.ci.lower'], linetype = "dashed", color = "red")+geom_hline(yintercept = ba_centroid_C$CI.lines['upper.limit.ci.upper'], linetype = "dashed", color = "red")
 ```
 
 A few more plots for illustration
 ```{r}
-cs_histogram <- ggplot(data=melt(CentroidSizes, id.vars = c("ID")), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), labels = c("AZ manual", "AZ auto", "JW manual", "JW auto", "Both manual", "Both auto"))
+cs_histogram <- ggplot(data=melt(CentroidSizes, id.vars = c("ID")), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "B_Manual", "B_Auto", "C_Manual", "C_Auto"), labels = c("A manual", "A auto", "B manual", "B auto", "C manual", "C auto"))
 
-cs_AZ <- ggplot(CentroidSizes, aes(A_Manual, A_Auto))+geom_point()+theme_bw()+labs(title = "AZ", x="", y="Automatic CS (mm)")
-cs_JW <- ggplot(CentroidSizes, aes(J_Manual, J_Auto))+geom_point()+theme_bw()+labs(title = "JW",x="Manual CS (mm)", y="")
-cs_Both <- ggplot(CentroidSizes, aes(B_Manual, B_Auto))+geom_point()+theme_bw()+labs(title = "B", x="", y="")
+cs_A <- ggplot(CentroidSizes, aes(A_Manual, A_Auto))+geom_point()+theme_bw()+labs(title = "Observer A", subtitle = "r = 0.958", x="", y="Automatic CS (mm)")
+cs_B <- ggplot(CentroidSizes, aes(B_Manual, B_Auto))+geom_point()+theme_bw()+labs(title = "Observer B",subtitle = "r = 0.95", x="Manual CS (mm)", y="")
+cs_C <- ggplot(CentroidSizes, aes(C_Manual, C_Auto))+geom_point()+theme_bw()+labs(title = "Combined average", subtitle = "r = 0.958", x="", y="")
 
-ggarrange(cs_AZ, cs_JW, cs_Both, ba_centroid_Aplot, ba_centroid_Jplot, ba_centroid_Bplot, ncol = 3, nrow=2, labels = c("(A)", "", "", "(B)", "", ""))
+ggarrange(cs_A, cs_B, cs_C, ba_centroid_Aplot, ba_centroid_Bplot, ba_centroid_Cplot, ncol = 3, nrow=2, labels = c("A", "", "", "B", "", ""))
 ```
 
 ###Histogram of centroid sizes 
 ```{r}
-ggplot(data=melt(CentroidSizes, id.vars = c("ID")), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(title="Comparison of centroid sizes", x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "J_Manual", "J_Auto", "B_Manual", "B_Auto"), labels = c("AZ manual", "AZ auto", "JW manual", "JW auto", "Both manual", "Both auto"))
+ggplot(data=melt(CentroidSizes, id.vars = c("ID")), aes(x=variable, y=value))+geom_boxplot(outlier.shape = NA)+geom_jitter(width = 0.2, size = 0.8, alpha = 0.5)+labs(title="Comparison of centroid sizes", x="Measurement method", y="Centroid size (mm)")+theme_bw()+scale_x_discrete(breaks = c("A_Manual", "A_Auto", "B_Manual", "B_Auto", "C_Manual", "C_Auto"), labels = c("A manual", "A auto", "B manual", "B auto", "C manual", "C auto"))
 ```
 
 ###Anova of centroid sizes
@@ -1207,7 +1119,7 @@ Create dataframe with information, without the individual that had a unique came
 ```{r}
 CentroidSize_Melt <- melt(CentroidSizes, id.vars = c("ID"))
 CentroidSize_Melt$ID <- as.factor(CentroidSize_Melt$ID)
-CentroidSize_Melt$Observer <- as.factor(c(rep("AZ", each=82), rep("JW", each=82), rep("Both", each=82)))
+CentroidSize_Melt$Observer <- as.factor(c(rep("A", each=82), rep("B", each=82), rep("C", each=82)))
 CentroidSize_Melt$Method <- as.factor(c(rep("Manual", each=41), rep("Auto", each=41), rep("Manual", each=41), rep("Auto", each=41), rep("Manual", each=41), rep("Auto", each=41)))
 
 CentroidSize_AOV <- aov(value ~ ID*Observer + Method, data = CentroidSize_Melt)
