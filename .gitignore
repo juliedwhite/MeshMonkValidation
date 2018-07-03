@@ -1,10 +1,17 @@
 #Exclude the following: 
-.ipynb_checkpoints/*
-.Rproj.user/*
-Manual_Landmarking/*
-OmidLandmarks/*
-PeterLandmarks/*
-.RData
-.Rhistory
-.Rproj.user
-*~*
+AutomaticLandmarking/*
+ManualLandmarking/*
+Manuscript/Abstract/*
+Manuscript/ArchivedRevisions/*
+Manuscript/Figures/*
+Manuscript/Tables/*
+Manuscript/Templates/*
+Manuscript/MshMonk_CoverLetter.docx
+Resources/*
+ValidationAnalysis/.RData
+ValidationAnalysis/.Rhistory
+ValidationAnalysis/MLvsAuto_AsymComparison.Rmd
+
+
+
+
