@@ -1,11 +1,7 @@
 #Exclude the following: 
 AutomaticLandmarking/*
 ManualLandmarking/*
-Manuscript/Abstract/*
-Manuscript/ArchivedRevisions/*
-Manuscript/FiguresAndTables/*
-Manuscript/Templates/*
-Manuscript/MeshMonk_CoverLetter.docx
+Manuscript/*
 Resources/*
 ValidationAnalysis/.RData
 ValidationAnalysis/.Rhistory
