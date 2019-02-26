@@ -1,7 +1,8 @@
 ---
 title: "Analysis for MeshMonk Validation"
 author: "Julie D. White"
-date: "May 26, 2018"
+date: "Begun May 26, 2018"
+date: "Revision completed February 20, 2019"
 output: html_document
 ---
 #Packages and functions
@@ -20,9 +21,10 @@ library(dplyr)
 library(broom)
 library(ggpubr)
 ```
-Root mean squared error function
+Root mean squared error and euclidean distance
 ```{r}
 RMSE = function(fitted, observed){sqrt(mean((fitted - observed)^2))}
+EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
 ```
 #The dataset
 Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
@@ -288,6 +290,36 @@ write.table(MLvsAuto_RMSE_ByLandmark, "Tables/MLvsAuto_RMSE_PerLMK.txt", row.nam
 Plot
 ```{r}
 ggplot(data = melt(MLvsAuto_RMSE[, c("ID", "LM.Num", "LM.Name", "Aml_Aloo_avg_rmse","Bml_Bloo_avg_rmse", "Cml_Cloo_avg_rmse")], id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(breaks=c("Aml_Aloo_avg_rmse", "Bml_Bloo_avg_rmse", "Cml_Cloo_avg_rmse"), labels=c("Aml - Aauto", "Bml - Bauto", "Cml - Cauto"))+ylab("Root mean squared error (mm)")+xlab("Landmark")
+```
+
+##Euclidean distance between manual landmarks and auto landmarks 
+Create a dataframe to store the results of the comparisons
+```{r}
+MLvsAuto_Euclid <- landmarks[,c("ID", "LM.Num", "LM.Name")]
+``` 
+Euclid between the ML and auto landmarks
+```{r}
+#A manual to A auto
+MLvsAuto_Euclid$Aml_Aloo_Euclid <- apply(landmarks[4:ncol(landmarks)],1,function(x) EuclideanDistance(x['A_ml_avgx'], x['A_loo_x'], x['A_ml_avgy'], x['A_loo_y'], x['A_ml_avgz'], x['A_loo_z']))
+
+#B manual to B auto
+MLvsAuto_Euclid$Bml_Bloo_Euclid <- apply(landmarks[4:ncol(landmarks)],1,function(x) EuclideanDistance(x['B_ml_avgx'], x['B_loo_x'], x['B_ml_avgy'], x['B_loo_y'], x['B_ml_avgz'], x['B_loo_z']))
+
+#C manual to C auto
+MLvsAuto_Euclid$Cml_Cloo_Euclid <- apply(landmarks[4:ncol(landmarks)],1,function(x) EuclideanDistance(x['C_ml_avgx'], x['C_loo_x'], x['C_ml_avgy'], x['C_loo_y'], x['C_ml_avgz'], x['C_loo_z']))
+```
+Write table for manuscript 
+```{r}
+MLvsAuto_Euclid_ByLandmark <- ddply(MLvsAuto_Euclid,~LM.Name,summarise,
+                                    Aml_Aloo_Euclid = mean(Aml_Aloo_Euclid), 
+                                    Bml_Bloo_Euclid = mean(Bml_Bloo_Euclid),
+                                    Cml_Cloo_Euclid = mean(Cml_Cloo_Euclid)) 
+
+write.table(MLvsAuto_Euclid_ByLandmark, "Tables/MLvsAuto_Euclid_PerLMK.txt", row.names = F, col.names = T, quote = F, sep = "\t")
+```
+Plot
+```{r}
+ggplot(data = melt(MLvsAuto_Euclid, id.vars = c("ID", "LM.Num", "LM.Name")), aes(x=LM.Name, y=value, fill=variable))+geom_boxplot()+theme_minimal()+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.1), legend.position = "top", legend.title = element_blank())+scale_fill_discrete(labels=c("Aml - Aauto", "Bml - Bauto", "Cml - Cauto"))+ylab("Euclidean distance (mm)")+xlab("Landmark")
 ```
 
 #Comparison of "inter-observer errors
