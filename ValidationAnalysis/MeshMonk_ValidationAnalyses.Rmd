@@ -26,6 +26,14 @@ Root mean squared error and euclidean distance
 RMSE = function(fitted, observed){sqrt(mean((fitted - observed)^2))}
 EuclideanDistance <- function(x1,x2,y1,y2,z1,z2){sqrt(sum((x1-x2)^2+(y1-y2)^2+(z1-z2)^2))}
 ```
+
+Create a "Tables" directory where we store table output
+```{r}
+if (dir.exists("Tables") != TRUE){
+  dir.create("Tables")
+}
+```
+
 #The dataset
 Individuals and their landmarks are rows, then the different landmarkings and statistics in columns. 
 ```{r}
@@ -36,7 +44,7 @@ All the columns with "ml" are the manual landmarks placed by observer A and B. T
 
 A_surf_avg landmarks are the result of PC averaging together observer A's three iterations and then placing them on the facial surface. B_surf_avg landmarks are the result of PC averaging together observer B's three iterations and then placing them on the facial surface. C_surf_avg landmarks are the result of PC averaging together all six iterations and then placing them on the facial surface.
 
-_loo landmarks are the result of PC using the surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, done 41 times, but each face's landmarks are left out ititeratively in the training. 
+*_loo landmarks are the result of PC using the surf_avg landmarks on all faces to "train" the placement for that landmark and then place them on each face, done 41 times, but each face's landmarks are left out ititeratively in the training. 
 
 #Intra-observer error of only manual landmarks
 Create dataframe for intra observer error of manual landmarks
