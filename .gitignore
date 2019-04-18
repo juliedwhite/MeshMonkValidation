@@ -1,7 +1,6 @@
 #Exclude the following: 
 AutomaticLandmarking/*
 ManualLandmarking/*
-Manuscript/*
 Resources/*
 ValidationAnalysis/.RData
 ValidationAnalysis/.Rhistory
